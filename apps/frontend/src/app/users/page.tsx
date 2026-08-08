@@ -6,7 +6,7 @@ import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
-import { Users, Plus, Trash2, Eye, EyeOff, Shield, UserCheck, UserX } from 'lucide-react';
+import { Users, Plus, Trash2, Eye, EyeOff, Shield, UserCheck, UserX, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -23,14 +23,24 @@ interface UserItem {
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editUser, setEditUser] = useState<UserItem | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ username: '', email: '', password: '', role: 'operator' });
+  const [editForm, setEditForm] = useState({ email: '', role: '', isActive: true });
   const [showPassword, setShowPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data, isLoading, mutate } = useApi<UserItem[]>('/api/v1/auth/users');
 
   const users = data?.data || [];
+
+  function openEditModal(user: UserItem) {
+    setEditUser(user);
+    setEditForm({ email: user.email, role: user.role, isActive: user.isActive });
+    setShowEdit(true);
+  }
 
   async function handleCreate() {
     if (!form.username || !form.email || !form.password) {
@@ -49,6 +59,23 @@ export default function UsersPage() {
       toast.error(message);
     } finally {
       setIsCreating(false);
+    }
+  }
+
+  async function handleEdit() {
+    if (!editUser) return;
+    setIsSaving(true);
+    try {
+      await api.put(`/api/v1/auth/users/${editUser.id}`, editForm);
+      toast.success('User updated');
+      setShowEdit(false);
+      setEditUser(null);
+      mutate();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update user';
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -172,6 +199,69 @@ export default function UsersPage() {
         </div>
       )}
 
+      {showEdit && editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => { setShowEdit(false); setEditUser(null); }}></div>
+          <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-md animate-fade-in">
+            <h3 className="text-lg font-semibold mb-4">Edit User: {editUser.username}</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input
+                  type="text"
+                  value={editUser.username}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="email@example.com"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, role: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none"
+                >
+                  <option value="operator">Operator</option>
+                  <option value="admin">Admin</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={editForm.isActive ? 'active' : 'inactive'}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, isActive: e.target.value === 'active' }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => { setShowEdit(false); setEditUser(null); }} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+              <button
+                onClick={handleEdit}
+                disabled={isSaving}
+                className="px-4 py-2 text-sm bg-whatsapp text-white rounded-lg hover:bg-whatsapp-dark disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-pulse">
           <div className="h-12 bg-gray-100"></div>
@@ -227,7 +317,14 @@ export default function UsersPage() {
                     {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never'}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEditModal(u)}
+                        title="Edit"
+                        className="p-1 text-gray-400 hover:text-blue-600"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={() => handleToggleActive(u.id, u.isActive)}
                         disabled={u.id === currentUser?.id}
