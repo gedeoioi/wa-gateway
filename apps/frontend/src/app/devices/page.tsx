@@ -60,9 +60,16 @@ export default function DevicesPage() {
         prev.map((dev) => (dev.id === d.deviceId ? { ...dev, status: d.status } : dev)),
       );
 
-      if (d.status === 'connected' || d.status === 'disconnected') {
+      if (d.status === 'connected') {
+        setQrCode(null);
+        setConnectingId(null);
+        mutate();
+        toast.success('Device connected!');
+      }
+      if (d.status === 'disconnected') {
         setQrCode((prev) => (prev?.deviceId === d.deviceId ? null : prev));
         setConnectingId((prev) => (prev === d.deviceId ? null : prev));
+        mutate();
       }
     });
 
@@ -74,6 +81,8 @@ export default function DevicesPage() {
       );
       setQrCode((prev) => (prev?.deviceId === d.deviceId ? null : prev));
       setConnectingId(null);
+      mutate();
+      toast.success(`Device connected: ${d.phoneNumber}`);
     });
 
     socket.on('device:qr', (d: { deviceId: string; qr: string }) => {
