@@ -12,6 +12,8 @@ import { messageRoutes } from './routes/message.routes';
 import { broadcastRoutes } from './routes/broadcast.routes';
 import { contactRoutes } from './routes/contact.routes';
 import { webhookRoutes } from './routes/webhook.routes';
+import { uploadRoutes } from './routes/upload.routes';
+import path from 'path';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './lib/logger';
 import { isQueueReady, getBroadcastQueueStats } from './lib/queue';
@@ -87,5 +89,7 @@ app.use(`${API_PREFIX}/messages`, messageRoutes);
 app.use(`${API_PREFIX}/broadcasts`, broadcastRoutes);
 app.use(`${API_PREFIX}/contacts`, contactRoutes);
 app.use(`${API_PREFIX}/webhooks`, webhookRoutes);
+app.use(`${API_PREFIX}/upload`, uploadRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use(errorHandler);
