@@ -94,7 +94,7 @@ export default function BroadcastsPage() {
       return;
     }
     setSelectedFile(file);
-    setForm((prev) => ({ ...prev, type: getMediaType(file.mimetype || file.type) }));
+    setForm((prev) => ({ ...prev, type: getMediaType(file.type) }));
   }
 
   async function handleUpload(): Promise<string | null> {

@@ -78,7 +78,7 @@ export default function MessagesPage() {
       return;
     }
     setSelectedFile(file);
-    setSendForm((prev) => ({ ...prev, type: getMediaType(file.mimetype || file.type) }));
+    setSendForm((prev) => ({ ...prev, type: getMediaType(file.type) }));
   }
 
   async function handleUpload(): Promise<string | null> {
