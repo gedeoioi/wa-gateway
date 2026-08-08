@@ -12,7 +12,7 @@ interface User {
   role: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = '';
 
 async function authPost<T>(endpoint: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_URL}${endpoint}`, {
