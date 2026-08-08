@@ -20,7 +20,7 @@ const createContactSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(255),
     phoneNumber: z.string().min(8).max(20),
-    email: z.string().email().optional(),
+    email: z.string().email().optional().or(z.literal('')),
     tags: z.array(z.string()).optional(),
     groupId: z.string().uuid().optional(),
   }),

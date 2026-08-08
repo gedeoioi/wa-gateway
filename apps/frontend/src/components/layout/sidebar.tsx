@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   UserPlus,
-  Lock,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -25,7 +24,6 @@ const navItems = [
   { href: '/broadcasts', label: 'Broadcasts', icon: Send },
   { href: '/contacts', label: 'Contacts', icon: Users },
   { href: '/users', label: 'Users', icon: UserPlus, adminOnly: true },
-  { href: '/change-password', label: 'Change Password', icon: Lock },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

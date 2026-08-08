@@ -8,20 +8,24 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  username     String    @unique
-  email        String    @unique
-  password     String
-  role         UserRole  @default(operator)
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                String    @id @default(uuid())
+  username          String    @unique
+  email             String    @unique
+  password          String
+  role              UserRole  @default(operator)
+  isActive          Boolean   @default(true)
+  lastLoginAt       DateTime?
+  lastPasswordChange DateTime?
+  failedLoginAttempts Int      @default(0)
+  lockedUntil       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  devices      Device[]
-  contacts     Contact[]
-  contactGroups ContactGroup[]
-  apiKeys      ApiKey[]
+  devices           Device[]
+  contacts          Contact[]
+  contactGroups     ContactGroup[]
+  apiKeys           ApiKey[]
+  loginHistory      LoginHistory[]
 
   @@map("users")
 }
@@ -205,4 +209,20 @@ model ApiKey {
 
   @@index([key])
   @@map("api_keys")
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  ip        String?  @db.VarChar(45)
+  userAgent String?  @db.Text
+  success   Boolean
+  reason    String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("login_history")
 }

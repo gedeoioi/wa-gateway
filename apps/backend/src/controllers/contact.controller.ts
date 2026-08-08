@@ -59,7 +59,7 @@ export async function createContact(req: AuthRequest, res: Response, next: NextF
         userId: req.user!.id,
         name,
         phoneNumber: formattedPhone,
-        email,
+        email: email || null,
         tags: tags ? JSON.stringify(tags) : null,
         ...(groupId ? { groups: { create: { groupId } } } : {}),
       },

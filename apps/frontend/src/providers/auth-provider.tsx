@@ -12,6 +12,22 @@ interface User {
   role: string;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+async function authPost<T>(endpoint: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Request failed');
+  }
+  return data;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (username: string, password: string) => {
-      const res = await api.post<{
+      const res = await authPost<{
         success: boolean;
         data: { accessToken: string; refreshToken: string; user: User };
       }>('/api/v1/auth/login', { username, password });
@@ -55,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(
     async (username: string, email: string, password: string) => {
-      const res = await api.post<{
+      const res = await authPost<{
         success: boolean;
         data: { accessToken: string; refreshToken: string; user: User };
       }>('/api/v1/auth/register', { username, email, password });

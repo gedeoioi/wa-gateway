@@ -6,6 +6,9 @@ import {
   getProfile,
   updateProfile,
   changePassword,
+  getLoginHistory,
+  getActiveSession,
+  revokeAllSessions,
   listUsers,
   createUser,
   updateUser,
@@ -69,6 +72,10 @@ router.post('/refresh', validate(refreshSchema), refreshToken);
 router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, updateProfile);
 router.put('/change-password', authenticate, validate(changePasswordSchema), changePassword);
+
+router.get('/login-history', authenticate, getLoginHistory);
+router.get('/session', authenticate, getActiveSession);
+router.post('/revoke-sessions', authenticate, revokeAllSessions);
 
 router.get('/users', authenticate, authorize('admin'), listUsers);
 router.post('/users', authenticate, authorize('admin'), validate(createUserSchema), createUser);

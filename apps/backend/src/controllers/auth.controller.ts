@@ -9,6 +9,13 @@ import { logger } from '../lib/logger';
 const ACCESS_TOKEN_OPTIONS: SignOptions = { expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as SignOptions['expiresIn'] };
 const REFRESH_TOKEN_OPTIONS: SignOptions = { expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as SignOptions['expiresIn'] };
 
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
+function getClientIp(req: Request): string {
+  return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+}
+
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { username, email, password } = req.body;
@@ -31,6 +38,7 @@ export async function register(req: Request, res: Response, next: NextFunction):
         email,
         password: hashedPassword,
         role: 'operator',
+        lastPasswordChange: new Date(),
       },
       select: { id: true, username: true, email: true, role: true },
     });
@@ -65,16 +73,61 @@ export async function register(req: Request, res: Response, next: NextFunction):
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { username, password } = req.body;
+    const ip = getClientIp(req);
+    const userAgent = req.headers['user-agent'] || 'unknown';
 
     const user = await prisma.user.findUnique({ where: { username } });
-    if (!user || !user.isActive) {
+
+    if (!user) {
+      await prisma.loginHistory.create({
+        data: { userId: '00000000-0000-0000-0000-000000000000', ip, userAgent, success: false, reason: 'User not found' },
+      }).catch(() => {});
       throw new AppError('Invalid credentials', 401);
+    }
+
+    if (!user.isActive) {
+      await prisma.loginHistory.create({
+        data: { userId: user.id, ip, userAgent, success: false, reason: 'Account disabled' },
+      });
+      throw new AppError('Account is disabled', 403);
+    }
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
+      await prisma.loginHistory.create({
+        data: { userId: user.id, ip, userAgent, success: false, reason: 'Account locked' },
+      });
+      throw new AppError(`Account is locked. Try again in ${minutesLeft} minutes.`, 423);
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
+      const newAttempts = user.failedLoginAttempts + 1;
+      const updateData: Record<string, unknown> = { failedLoginAttempts: newAttempts };
+
+      if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+        updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+        updateData.failedLoginAttempts = 0;
+        logger.warn(`Account ${username} locked after ${MAX_FAILED_ATTEMPTS} failed attempts`);
+      }
+
+      await prisma.user.update({ where: { id: user.id }, data: updateData });
+      await prisma.loginHistory.create({
+        data: { userId: user.id, ip, userAgent, success: false, reason: `Invalid password (attempt ${newAttempts})` },
+      });
+
       throw new AppError('Invalid credentials', 401);
     }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date(), failedLoginAttempts: 0, lockedUntil: null },
+    });
+
+    await prisma.loginHistory.create({
+      data: { userId: user.id, ip, userAgent, success: true },
+    });
 
     const accessToken = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
@@ -88,12 +141,7 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
       REFRESH_TOKEN_OPTIONS,
     );
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
-
-    logger.info(`User ${username} logged in`);
+    logger.info(`User ${username} logged in from ${ip}`);
 
     res.json({
       success: true,
@@ -164,7 +212,10 @@ export async function updateProfile(req: AuthRequest, res: Response, next: NextF
     const updateData: Record<string, unknown> = {};
 
     if (email) updateData.email = email;
-    if (password) updateData.password = await bcrypt.hash(password, 12);
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 12);
+      updateData.lastPasswordChange = new Date();
+    }
 
     const user = await prisma.user.update({
       where: { id: req.user!.id },
@@ -195,12 +246,110 @@ export async function changePassword(req: AuthRequest, res: Response, next: Next
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({
       where: { id: req.user!.id },
-      data: { password: hashedPassword },
+      data: { password: hashedPassword, lastPasswordChange: new Date() },
+    });
+
+    await prisma.loginHistory.create({
+      data: {
+        userId: req.user!.id,
+        ip: getClientIp(req),
+        userAgent: req.headers['user-agent'] || 'unknown',
+        success: true,
+        reason: 'Password changed',
+      },
     });
 
     logger.info(`User ${req.user!.username} changed password`);
 
     res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getLoginHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const limit = parseInt(req.query.limit as string) || 20;
+
+    const history = await prisma.loginHistory.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        ip: true,
+        userAgent: true,
+        success: true,
+        reason: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ success: true, data: history });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getActiveSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        username: true,
+        lastLoginAt: true,
+        lastPasswordChange: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
+      },
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        currentSession: {
+          ip: getClientIp(req),
+          userAgent: req.headers['user-agent'] || 'unknown',
+          loginAt: user.lastLoginAt,
+        },
+        security: {
+          lastPasswordChange: user.lastPasswordChange,
+          failedLoginAttempts: user.failedLoginAttempts,
+          isLocked: user.lockedUntil ? user.lockedUntil > new Date() : false,
+          lockedUntil: user.lockedUntil,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function revokeAllSessions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { lastPasswordChange: new Date() },
+    });
+
+    await prisma.loginHistory.create({
+      data: {
+        userId: req.user!.id,
+        ip: getClientIp(req),
+        userAgent: req.headers['user-agent'] || 'unknown',
+        success: true,
+        reason: 'All sessions revoked',
+      },
+    });
+
+    logger.info(`User ${req.user!.username} revoked all sessions`);
+
+    res.json({ success: true, message: 'All other sessions have been revoked' });
   } catch (error) {
     next(error);
   }
@@ -249,6 +398,7 @@ export async function createUser(req: AuthRequest, res: Response, next: NextFunc
         email,
         password: hashedPassword,
         role: role || 'operator',
+        lastPasswordChange: new Date(),
       },
       select: { id: true, username: true, email: true, role: true, isActive: true, createdAt: true },
     });
