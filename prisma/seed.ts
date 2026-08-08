@@ -17,6 +17,18 @@ async function main() {
     },
   });
 
+  await prisma.siteSettings.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: {
+      id: 'default',
+      siteName: 'WA Gateway',
+      siteDescription: 'WhatsApp Gateway Enterprise',
+      primaryColor: '#075E54',
+      accentColor: '#128C7E',
+    },
+  });
+
   console.log('Database seeded successfully');
 }
 

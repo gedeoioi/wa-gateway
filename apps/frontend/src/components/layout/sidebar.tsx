@@ -15,6 +15,7 @@ import {
   ChevronRight,
   UserPlus,
   X,
+  Palette,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -25,6 +26,7 @@ const navItems = [
   { href: '/broadcasts', label: 'Broadcasts', icon: Send },
   { href: '/contacts', label: 'Contacts', icon: Users },
   { href: '/users', label: 'Users', icon: UserPlus, adminOnly: true },
+  { href: '/appearance', label: 'Appearance', icon: Palette, adminOnly: true },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

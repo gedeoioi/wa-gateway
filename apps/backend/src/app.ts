@@ -13,6 +13,7 @@ import { broadcastRoutes } from './routes/broadcast.routes';
 import { contactRoutes } from './routes/contact.routes';
 import { webhookRoutes } from './routes/webhook.routes';
 import { uploadRoutes } from './routes/upload.routes';
+import { siteSettingsRoutes } from './routes/site-settings.routes';
 import path from 'path';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './lib/logger';
@@ -90,6 +91,7 @@ app.use(`${API_PREFIX}/broadcasts`, broadcastRoutes);
 app.use(`${API_PREFIX}/contacts`, contactRoutes);
 app.use(`${API_PREFIX}/webhooks`, webhookRoutes);
 app.use(`${API_PREFIX}/upload`, uploadRoutes);
+app.use(`${API_PREFIX}/site-settings`, siteSettingsRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use(errorHandler);

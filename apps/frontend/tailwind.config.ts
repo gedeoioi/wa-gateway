@@ -22,9 +22,9 @@ const config: Config = {
           900: '#1e3a8a',
         },
         whatsapp: {
-          light: '#25D366',
-          DEFAULT: '#128C7E',
-          dark: '#075E54',
+          light: 'var(--color-accent, #25D366)',
+          DEFAULT: 'var(--color-accent, #128C7E)',
+          dark: 'var(--color-primary, #075E54)',
         },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
