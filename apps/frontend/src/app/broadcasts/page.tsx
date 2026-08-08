@@ -103,15 +103,8 @@ export default function BroadcastsPage() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
-      const res = await fetch(`${API_BASE}/api/v1/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
-      return data.data.url;
+      const res = await api.upload<{ success: boolean; data: { url: string } }>('/api/v1/upload', formData);
+      return res.data.url;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Upload failed');
       return null;

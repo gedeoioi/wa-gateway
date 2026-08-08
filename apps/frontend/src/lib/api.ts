@@ -130,6 +130,48 @@ class ApiClient {
   delete<T>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
+
+  async upload<T>(endpoint: string, formData: FormData): Promise<T> {
+    const authToken = this.getToken();
+    const headers: Record<string, string> = {};
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (response.status === 401) {
+      try {
+        const newToken = await this.handleTokenRefresh();
+        headers['Authorization'] = `Bearer ${newToken}`;
+        const retryResponse = await fetch(`${this.baseUrl}${endpoint}`, {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+        const retryData = await retryResponse.json();
+        if (!retryResponse.ok) throw new Error(retryData.error || 'Upload failed');
+        return retryData;
+      } catch {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/login';
+        }
+        throw new Error('Session expired');
+      }
+    }
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Upload failed');
+    }
+    return data;
+  }
 }
 
 export const api = new ApiClient(API_URL);
