@@ -46,7 +46,7 @@ export async function getMessages(req: AuthRequest, res: Response, next: NextFun
 
 export async function sendMessage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { deviceId, recipient, content, type = 'text', mediaUrl } = req.body;
+    const { deviceId, recipient, content = '', type = 'text', mediaUrl } = req.body;
 
     const device = await prisma.device.findFirst({
       where: { id: deviceId, userId: req.user!.id },

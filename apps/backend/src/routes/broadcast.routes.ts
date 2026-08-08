@@ -17,7 +17,7 @@ const createBroadcastSchema = z.object({
   body: z.object({
     deviceId: z.string().uuid(),
     name: z.string().min(1).max(255),
-    message: z.string().min(1).max(4096),
+    message: z.string().max(4096).optional().default(''),
     type: z.enum(['text', 'image', 'video', 'document', 'audio']).optional(),
     mediaUrl: z.string().url().optional(),
     recipients: z.array(z.string()).min(1).max(10000),

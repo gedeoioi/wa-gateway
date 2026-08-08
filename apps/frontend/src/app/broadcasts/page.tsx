@@ -103,7 +103,8 @@ export default function BroadcastsPage() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      const res = await fetch(`${window.location.origin}/api/v1/upload`, {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+      const res = await fetch(`${API_BASE}/api/v1/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         body: formData,

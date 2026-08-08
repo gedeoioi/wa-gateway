@@ -10,7 +10,7 @@ const sendMessageSchema = z.object({
   body: z.object({
     deviceId: z.string().uuid(),
     recipient: z.string().min(8).max(20),
-    content: z.string().min(1).max(4096),
+    content: z.string().max(4096).optional().default(''),
     type: z.enum(['text', 'image', 'video', 'document', 'audio']).optional(),
     mediaUrl: z.string().url().optional(),
   }),
