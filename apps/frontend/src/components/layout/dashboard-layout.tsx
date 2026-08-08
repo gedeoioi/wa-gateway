@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useSiteSettings } from '@/providers/site-settings-provider';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 
@@ -14,6 +15,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
   const { isAuthenticated, isLoading } = useAuth();
+  const siteSettings = useSiteSettings();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -41,6 +43,12 @@ export function DashboardLayout({ children, title, subtitle }: DashboardLayoutPr
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50">
           {children}
         </main>
+        <footer className="px-4 sm:px-6 py-3 border-t border-gray-200 bg-white">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-1 text-xs text-gray-400">
+            <span>&copy; {new Date().getFullYear()} {siteSettings.siteName || 'WA Gateway'}. All rights reserved.</span>
+            {siteSettings.footerText && <span>{siteSettings.footerText}</span>}
+          </div>
+        </footer>
       </div>
     </div>
   );
