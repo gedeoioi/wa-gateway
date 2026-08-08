@@ -41,6 +41,32 @@ const upload = multer({
   limits: { fileSize: 16 * 1024 * 1024 },
 });
 
+/**
+ * @swagger
+ * /api/v1/upload:
+ *   post:
+ *     summary: Upload a file
+ *     tags: [Upload]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Allowed: image, video, audio, document (max 16MB)"
+ *     responses:
+ *       200:
+ *         description: File uploaded, returns URL
+ *       400:
+ *         description: No file or invalid file type
+ */
 router.post('/', authenticate, authorize('admin', 'operator'), upload.single('file') as any, uploadFile);
 
 export { router as uploadRoutes };

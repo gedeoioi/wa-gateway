@@ -54,7 +54,12 @@ const swaggerSpec = swaggerJsdoc({
       version: '1.0.0',
       description: 'WhatsApp Gateway Enterprise API',
     },
-    servers: [{ url: `http://localhost:${process.env.BACKEND_PORT || 3001}` }],
+    servers: [
+      {
+        url: process.env.BACKEND_URL || `http://localhost:${process.env.BACKEND_PORT || 3001}`,
+        description: process.env.NODE_ENV === 'production' ? 'Production' : 'Development',
+      },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
