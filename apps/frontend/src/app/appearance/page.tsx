@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { api } from '@/lib/api';
-import { Palette, Image, Type, Save, Loader2 } from 'lucide-react';
+import { Palette, Image, Type, Save, Loader2, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface SiteSettings {
@@ -40,6 +40,10 @@ export default function AppearancePage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function fetchSettings() {
@@ -65,6 +69,50 @@ export default function AppearancePage() {
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleUpload(file: File, type: 'logo' | 'favicon'): Promise<string | null> {
+    const setUploading = type === 'logo' ? setIsUploadingLogo : setIsUploadingFavicon;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.upload<{ success: boolean; data: { url: string } }>('/api/v1/upload', formData);
+      return res.data.url;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo file max 2MB');
+      return;
+    }
+    const url = await handleUpload(file, 'logo');
+    if (url) {
+      update('logoUrl', url);
+      toast.success('Logo uploaded');
+    }
+  }
+
+  async function handleFaviconSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 512 * 1024) {
+      toast.error('Favicon file max 512KB');
+      return;
+    }
+    const url = await handleUpload(file, 'favicon');
+    if (url) {
+      update('faviconUrl', url);
+      toast.success('Favicon uploaded');
+    }
   }
 
   async function handleSave() {
@@ -138,34 +186,120 @@ export default function AppearancePage() {
             <Image className="h-6 w-6 text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900">Logo & Favicon</h2>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-5">
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                onChange={handleLogoSelect}
+                className="hidden"
+              />
+              {form.logoUrl ? (
+                <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                  <img src={form.logoUrl} alt="Logo" className="h-16 w-16 object-contain rounded border bg-white" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">Logo uploaded</p>
+                    <p className="text-xs text-gray-400 truncate mt-1">{form.logoUrl}</p>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={isUploadingLogo}
+                        className="text-xs text-whatsapp hover:underline font-medium"
+                      >
+                        {isUploadingLogo ? 'Uploading...' : 'Replace'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => update('logoUrl', '')}
+                        className="text-xs text-red-500 hover:underline font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={isUploadingLogo}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-whatsapp hover:text-whatsapp transition-colors disabled:opacity-50"
+                >
+                  {isUploadingLogo ? (
+                    <><Loader2 className="h-5 w-5 animate-spin" /> Uploading...</>
+                  ) : (
+                    <><Upload className="h-5 w-5" /> Upload Logo (PNG, JPG, SVG, max 2MB)</>
+                  )}
+                </button>
+              )}
               <input
                 type="url"
                 value={form.logoUrl}
                 onChange={(e) => update('logoUrl', e.target.value)}
-                placeholder="https://example.com/logo.png"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none"
+                placeholder="Or enter URL: https://example.com/logo.png"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none mt-2 text-sm"
               />
-              <p className="text-xs text-gray-400 mt-1">Recommended: 200x200px, PNG/SVG</p>
             </div>
-            {form.logoUrl && (
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <img src={form.logoUrl} alt="Logo" className="h-10 w-10 object-contain rounded" />
-                <span className="text-sm text-gray-500">Logo preview</span>
-              </div>
-            )}
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Favicon URL</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Favicon</label>
+              <input
+                ref={faviconInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/x-icon,image/svg+xml"
+                onChange={handleFaviconSelect}
+                className="hidden"
+              />
+              {form.faviconUrl ? (
+                <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                  <img src={form.faviconUrl} alt="Favicon" className="h-8 w-8 object-contain rounded border bg-white" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">Favicon uploaded</p>
+                    <p className="text-xs text-gray-400 truncate mt-1">{form.faviconUrl}</p>
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => faviconInputRef.current?.click()}
+                        disabled={isUploadingFavicon}
+                        className="text-xs text-whatsapp hover:underline font-medium"
+                      >
+                        {isUploadingFavicon ? 'Uploading...' : 'Replace'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => update('faviconUrl', '')}
+                        className="text-xs text-red-500 hover:underline font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => faviconInputRef.current?.click()}
+                  disabled={isUploadingFavicon}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-whatsapp hover:text-whatsapp transition-colors disabled:opacity-50"
+                >
+                  {isUploadingFavicon ? (
+                    <><Loader2 className="h-5 w-5 animate-spin" /> Uploading...</>
+                  ) : (
+                    <><Upload className="h-5 w-5" /> Upload Favicon (PNG, ICO, SVG, max 512KB)</>
+                  )}
+                </button>
+              )}
               <input
                 type="url"
                 value={form.faviconUrl}
                 onChange={(e) => update('faviconUrl', e.target.value)}
-                placeholder="https://example.com/favicon.ico"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none"
+                placeholder="Or enter URL: https://example.com/favicon.ico"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none mt-2 text-sm"
               />
-              <p className="text-xs text-gray-400 mt-1">Recommended: 32x32px, ICO/PNG</p>
             </div>
           </div>
         </div>
