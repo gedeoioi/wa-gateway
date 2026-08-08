@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getMessages, sendMessage, getMessageStats } from '../controllers/message.controller';
+import { getMessages, sendMessage, getMessageStats, deleteMessage, deleteAllMessages } from '../controllers/message.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
@@ -44,5 +44,7 @@ const sendMessageSchema = z.object({
 router.get('/', authenticate, getMessages);
 router.get('/stats', authenticate, getMessageStats);
 router.post('/send', authenticate, authorize('admin', 'operator'), validate(sendMessageSchema), sendMessage);
+router.delete('/all', authenticate, authorize('admin', 'operator'), deleteAllMessages);
+router.delete('/:id', authenticate, authorize('admin', 'operator'), deleteMessage);
 
 export { router as messageRoutes };

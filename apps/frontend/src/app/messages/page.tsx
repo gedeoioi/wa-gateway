@@ -7,7 +7,8 @@ import { api } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Pagination } from '@/components/ui/pagination';
 import { EmptyState } from '@/components/ui/empty-state';
-import { MessageSquare, Send, Search } from 'lucide-react';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { MessageSquare, Send, Search, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -39,6 +40,9 @@ export default function MessagesPage() {
     content: '',
   });
   const [isSending, setIsSending] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const queryParams = new URLSearchParams({ page: String(page), limit: '20' });
   if (search) queryParams.set('recipient', search);
@@ -73,6 +77,35 @@ export default function MessagesPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!deleteId) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/api/v1/messages/${deleteId}`);
+      toast.success('Message deleted');
+      setDeleteId(null);
+      mutate();
+    } catch {
+      toast.error('Failed to delete message');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function handleDeleteAll() {
+    setIsDeleting(true);
+    try {
+      const res = await api.delete<{ success: boolean; message: string }>('/api/v1/messages/all');
+      toast.success(res.message);
+      setShowDeleteAll(false);
+      mutate();
+    } catch {
+      toast.error('Failed to delete all messages');
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <DashboardLayout title="Messages" subtitle="View and send messages">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
@@ -86,13 +119,24 @@ export default function MessagesPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp focus:border-transparent outline-none"
           />
         </div>
-        <button
-          onClick={() => setShowSend(true)}
-          className="bg-whatsapp hover:bg-whatsapp-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Send className="h-4 w-4" />
-          Send Message
-        </button>
+        <div className="flex gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={() => setShowDeleteAll(true)}
+              className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete All
+            </button>
+          )}
+          <button
+            onClick={() => setShowSend(true)}
+            className="bg-whatsapp hover:bg-whatsapp-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Send className="h-4 w-4" />
+            Send Message
+          </button>
+        </div>
       </div>
 
       {showSend && (
@@ -173,6 +217,7 @@ export default function MessagesPage() {
                                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Device</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -187,6 +232,11 @@ export default function MessagesPage() {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(msg.createdAt).toLocaleDateString()}
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    <button onClick={() => setDeleteId(msg.id)} className="p-1 text-gray-400 hover:text-red-600">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -197,6 +247,34 @@ export default function MessagesPage() {
               <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
             </div>
           )}
+        </div>
+      )}
+      <ConfirmModal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Message"
+        message="Are you sure you want to delete this message?"
+        confirmText="Delete"
+      />
+
+      {showDeleteAll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowDeleteAll(false)}></div>
+          <div className="relative bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-md mx-4 animate-fade-in">
+            <h3 className="text-lg font-semibold mb-2">Delete All Messages</h3>
+            <p className="text-sm text-gray-500 mb-6">This will permanently delete all {pagination?.total || messages.length} messages. This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowDeleteAll(false)} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+              <button
+                onClick={handleDeleteAll}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete All'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </DashboardLayout>

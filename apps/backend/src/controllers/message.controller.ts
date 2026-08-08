@@ -96,6 +96,40 @@ export async function sendMessage(req: AuthRequest, res: Response, next: NextFun
   }
 }
 
+export async function deleteMessage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const message = await prisma.message.findFirst({
+      where: { id: req.params.id, device: { userId: req.user!.id } },
+    });
+    if (!message) {
+      throw new AppError('Message not found', 404);
+    }
+
+    await prisma.message.delete({ where: { id: message.id } });
+    res.json({ success: true, message: 'Message deleted' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteAllMessages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userDeviceFilter = { device: { userId: req.user!.id } };
+
+    const count = await prisma.message.count({ where: userDeviceFilter });
+    if (count === 0) {
+      throw new AppError('No messages to delete', 404);
+    }
+
+    await prisma.message.deleteMany({ where: userDeviceFilter });
+
+    logger.info(`User ${req.user!.username} deleted all messages (${count})`);
+    res.json({ success: true, message: `${count} messages deleted` });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getMessageStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const userDeviceFilter = { device: { userId: req.user!.id } };
