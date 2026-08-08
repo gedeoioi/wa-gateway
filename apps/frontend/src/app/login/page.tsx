@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { MessageSquare, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useSiteSettings } from '@/providers/site-settings-provider';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, register } = useAuth();
+  const siteSettings = useSiteSettings();
   const router = useRouter();
 
   function resetForm() {
@@ -61,11 +63,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-whatsapp-dark via-whatsapp to-whatsapp-light">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md animate-fade-in">
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-whatsapp p-3 rounded-full mb-4">
-            <MessageSquare className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">WA Gateway</h1>
-          <p className="text-gray-500 mt-1">Enterprise Management</p>
+          {siteSettings.logoUrl ? (
+            <img src={siteSettings.logoUrl} alt="Logo" className="h-16 w-16 object-contain mb-4" />
+          ) : (
+            <div className="p-3 rounded-full mb-4" style={{ backgroundColor: siteSettings.primaryColor }}>
+              <MessageSquare className="h-8 w-8 text-white" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-gray-900">{siteSettings.siteName}</h1>
+          <p className="text-gray-500 mt-1">{siteSettings.siteDescription}</p>
         </div>
 
         <div className="flex mb-6 bg-gray-100 rounded-lg p-1">

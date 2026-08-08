@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useSiteSettings } from '@/providers/site-settings-provider';
 import {
   LayoutDashboard,
   Smartphone,
@@ -38,6 +39,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const siteSettings = useSiteSettings();
   const [collapsed, setCollapsed] = useState(false);
 
   const filteredNavItems = navItems.filter((item) => {
@@ -56,11 +58,18 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       <div className="p-4 flex items-center justify-between border-b border-gray-800">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="bg-whatsapp p-2 rounded-lg">
-              <MessageSquare className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold text-lg">WA Gateway</span>
+            {siteSettings.logoUrl ? (
+              <img src={siteSettings.logoUrl} alt="Logo" className="h-8 w-8 object-contain rounded" />
+            ) : (
+              <div className="p-2 rounded-lg" style={{ backgroundColor: siteSettings.primaryColor }}>
+                <MessageSquare className="h-5 w-5 text-white" />
+              </div>
+            )}
+            <span className="font-bold text-lg">{siteSettings.siteName || 'WA Gateway'}</span>
           </div>
+        )}
+        {collapsed && siteSettings.logoUrl && (
+          <img src={siteSettings.logoUrl} alt="Logo" className="h-8 w-8 object-contain rounded mx-auto" />
         )}
         <div className="flex items-center gap-1">
           <button
@@ -85,11 +94,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-whatsapp text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
+              className={"flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors " +
+                (isActive
+                  ? "text-white"
+                  : "text-gray-400 hover:text-white hover:bg-gray-800")
+              }
+              style={isActive ? { backgroundColor: siteSettings.primaryColor } : undefined}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
               {(!collapsed || mobileOpen) && <span>{item.label}</span>}
@@ -125,11 +135,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         />
       )}
       <aside
-        className={`${
-          collapsed ? 'w-20' : 'w-64'
-        } bg-gray-900 text-white min-h-screen flex flex-col transition-all duration-300 fixed lg:relative z-50 h-full ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        className={"${collapsed ? 'w-20' : 'w-64'} bg-gray-900 text-white min-h-screen flex flex-col transition-all duration-300 fixed lg:relative z-50 h-full " +
+          (mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0')
+        }
       >
         {navContent}
       </aside>
