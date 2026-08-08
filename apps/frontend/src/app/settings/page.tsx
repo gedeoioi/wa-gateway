@@ -5,7 +5,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
 import {
-  Settings, User, Shield, Database, Eye, EyeOff, Loader2,
+  Settings, User, Shield, Eye, EyeOff, Loader2,
   Lock, Monitor, Clock, CheckCircle, XCircle, AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -295,22 +295,6 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Database className="h-6 w-6 text-gray-400" />
-            <h2 className="text-lg font-semibold text-gray-900">System Info</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Version</label>
-              <p className="text-gray-900">1.0.0</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Environment</label>
-              <p className="text-gray-900">{process.env.NODE_ENV || 'development'}</p>
-            </div>
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );
