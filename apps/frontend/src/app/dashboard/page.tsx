@@ -82,9 +82,9 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout title="Dashboard" subtitle="Overview of your WhatsApp Gateway">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {statsCards.map((card) => (
-          <div key={card.label} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
+          <div key={card.label} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <div className={`${card.color} p-3 rounded-lg`}>
                 <card.icon className="h-6 w-6 text-white" />
@@ -97,8 +97,8 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Device Status</h2>
           {loadingDevices ? (
             <CardSkeleton />
@@ -132,7 +132,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Message Statistics</h2>
           {loadingMessages ? (
             <CardSkeleton />

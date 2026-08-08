@@ -135,7 +135,7 @@ export default function BroadcastsPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowCreate(false)}></div>
-          <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-lg animate-fade-in">
+          <div className="relative bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-lg mx-4 animate-fade-in">
             <h3 className="text-lg font-semibold mb-4">New Broadcast</h3>
             <div className="space-y-4">
               <div>

@@ -14,8 +14,9 @@ import {
   ChevronLeft,
   ChevronRight,
   UserPlus,
+  X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,7 +28,12 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
@@ -39,12 +45,12 @@ export function Sidebar() {
     return true;
   });
 
-  return (
-    <aside
-      className={`${
-        collapsed ? 'w-20' : 'w-64'
-      } bg-gray-900 text-white min-h-screen flex flex-col transition-all duration-300`}
-    >
+  useEffect(() => {
+    if (onMobileClose) onMobileClose();
+  }, [pathname]);
+
+  const navContent = (
+    <>
       <div className="p-4 flex items-center justify-between border-b border-gray-800">
         {!collapsed && (
           <div className="flex items-center gap-2">
@@ -54,12 +60,20 @@ export function Sidebar() {
             <span className="font-bold text-lg">WA Gateway</span>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
-        >
-          {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors hidden lg:block"
+          >
+            {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+          </button>
+          <button
+            onClick={onMobileClose}
+            className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors lg:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
@@ -76,14 +90,14 @@ export function Sidebar() {
               }`}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {(!collapsed || mobileOpen) && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
       <div className="p-4 border-t border-gray-800">
-        {!collapsed && user && (
+        {(!collapsed || mobileOpen) && user && (
           <div className="mb-3 px-3">
             <p className="text-sm font-medium text-white">{user.username}</p>
             <p className="text-xs text-gray-400">{user.role}</p>
@@ -94,9 +108,29 @@ export function Sidebar() {
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 w-full transition-colors"
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />
-          {!collapsed && <span>Logout</span>}
+          {(!collapsed || mobileOpen) && <span>Logout</span>}
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+      <aside
+        className={`${
+          collapsed ? 'w-20' : 'w-64'
+        } bg-gray-900 text-white min-h-screen flex flex-col transition-all duration-300 fixed lg:relative z-50 h-full ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        {navContent}
+      </aside>
+    </>
   );
 }

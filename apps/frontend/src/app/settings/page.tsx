@@ -111,13 +111,13 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout title="Settings" subtitle="System configuration">
-      <div className="max-w-4xl space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="max-w-4xl space-y-4 sm:space-y-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-6">
             <User className="h-6 w-6 text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Username</label>
               <p className="text-gray-900">{user?.username || '-'}</p>
@@ -135,7 +135,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-6">
             <Shield className="h-6 w-6 text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900">Security</h2>
@@ -148,7 +148,7 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-6">
               {session && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
                       <Monitor className="h-4 w-4" /> Current Session

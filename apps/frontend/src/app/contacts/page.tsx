@@ -111,7 +111,7 @@ export default function ContactsPage() {
 
   return (
     <DashboardLayout title="Contacts" subtitle="Manage your contact list">
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -134,7 +134,7 @@ export default function ContactsPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowCreate(false)}></div>
-          <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-md animate-fade-in">
+          <div className="relative bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-md mx-4 animate-fade-in">
             <h3 className="text-lg font-semibold mb-4">New Contact</h3>
             <div className="space-y-4">
               <div>
@@ -185,7 +185,7 @@ export default function ContactsPage() {
       {showSend && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowSend(false)}></div>
-          <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-md animate-fade-in">
+          <div className="relative bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-md mx-4 animate-fade-in">
             <h3 className="text-lg font-semibold mb-4">Send Message</h3>
             <div className="space-y-4">
               <div>
@@ -252,6 +252,7 @@ export default function ContactsPage() {
         />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -287,6 +288,7 @@ export default function ContactsPage() {
               ))}
             </tbody>
           </table>
+          </div>
           {pagination && (
             <div className="p-4 border-t border-gray-200">
               <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} />
