@@ -11,8 +11,7 @@ export async function uploadFile(req: AuthRequest, res: Response, next: NextFunc
     }
 
     const file = req.file;
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const fileUrl = `${baseUrl}/uploads/${file.filename}`;
+    const fileUrl = `/uploads/${file.filename}`;
 
     logger.info(`File uploaded: ${file.filename} by ${req.user!.username}`);
 
