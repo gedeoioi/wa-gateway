@@ -28,14 +28,16 @@ app.use(compression() as unknown as express.RequestHandler);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 100 : 10000,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: 'Too many requests, please try again later.' },
-});
-app.use(`${API_PREFIX}/`, limiter as unknown as express.RequestHandler);
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many requests, please try again later.' },
+  });
+  app.use(`${API_PREFIX}/`, limiter as unknown as express.RequestHandler);
+}
 
 app.use(morgan('combined', {
   stream: { write: (message: string) => logger.info(message.trim()) },
