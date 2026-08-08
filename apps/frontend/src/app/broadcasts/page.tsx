@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Pagination } from '@/components/ui/pagination';
 import { EmptyState } from '@/components/ui/empty-state';
 import { connectSocket } from '@/lib/socket';
-import { Send, Plus, Play, XCircle, Trash2, Loader2, Paperclip, X, Image, FileText, Film, Music } from 'lucide-react';
+import { Send, Plus, Play, XCircle, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Broadcast {
@@ -32,14 +32,6 @@ interface Device {
   status: string;
 }
 
-function getTypeIcon(type: string) {
-  if (type === 'image') return <Image className="h-4 w-4 text-blue-500" />;
-  if (type === 'video') return <Film className="h-4 w-4 text-purple-500" />;
-  if (type === 'audio') return <Music className="h-4 w-4 text-green-500" />;
-  if (type === 'document') return <FileText className="h-4 w-4 text-gray-500" />;
-  return <Send className="h-4 w-4 text-gray-400" />;
-}
-
 export default function BroadcastsPage() {
   const [page, setPage] = useState(1);
   const { data, isLoading, mutate } = useApi<Broadcast[]>(`/api/v1/broadcasts?page=${page}&limit=20`);
@@ -50,16 +42,11 @@ export default function BroadcastsPage() {
     name: '',
     message: '',
     recipients: '',
-    type: 'text',
-    mediaUrl: '',
-    delayBetweenMessages: 2000,
+      delayBetweenMessages: 2000,
   });
   const [isCreating, setIsCreating] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, { sent: number; failed: number; total: number }>>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const broadcasts = data?.data || [];
   const pagination = data?.pagination;
@@ -79,47 +66,7 @@ export default function BroadcastsPage() {
     };
   }, [mutate, mutateDevices]);
 
-  function getMediaType(mime: string): string {
-    if (mime.startsWith('image/')) return 'image';
-    if (mime.startsWith('video/')) return 'video';
-    if (mime.startsWith('audio/')) return 'audio';
-    return 'document';
-  }
-
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 16 * 1024 * 1024) {
-      toast.error('File size max 16MB');
-      return;
-    }
-    setSelectedFile(file);
-    setForm((prev) => ({ ...prev, type: getMediaType(file.type) }));
-  }
-
-  async function handleUpload(): Promise<string | null> {
-    if (!selectedFile) return null;
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      const res = await api.upload<{ success: boolean; data: { url: string } }>('/api/v1/upload', formData);
-      return res.data.url;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
-      return null;
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  function clearFile() {
-    setSelectedFile(null);
-    setForm((prev) => ({ ...prev, type: 'text', mediaUrl: '' }));
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
-
-  async function handleCreate() {
+          async function handleCreate() {
     const recipients = form.recipients.split('\n').map((r) => r.trim()).filter(Boolean);
     if (!form.deviceId || !form.name || !form.message || recipients.length === 0) {
       toast.error('Please fill all required fields');
@@ -127,16 +74,10 @@ export default function BroadcastsPage() {
     }
     setIsCreating(true);
     try {
-      let mediaUrl = form.mediaUrl;
-      if (selectedFile) {
-        mediaUrl = await handleUpload() || '';
-        if (!mediaUrl && selectedFile) { setIsCreating(false); return; }
-      }
-      await api.post('/api/v1/broadcasts', { ...form, mediaUrl: mediaUrl || undefined, recipients });
+      await api.post('/api/v1/broadcasts', { ...form, recipients });
       toast.success('Broadcast created');
       setShowCreate(false);
-      setForm({ deviceId: '', name: '', message: '', recipients: '', type: 'text', mediaUrl: '', delayBetweenMessages: 2000 });
-      setSelectedFile(null);
+      setForm({ deviceId: '', name: '', message: '', recipients: '', delayBetweenMessages: 2000 });
       mutate();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create broadcast');
@@ -234,50 +175,6 @@ export default function BroadcastsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Attach File (optional)</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileSelect}
-                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt"
-                  className="hidden"
-                />
-                {selectedFile ? (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                    {getTypeIcon(form.type)}
-                    <span className="text-sm text-gray-700 truncate flex-1">{selectedFile.name}</span>
-                    <span className="text-xs text-gray-400">{(selectedFile.size / 1024).toFixed(0)}KB</span>
-                    <button onClick={clearFile} className="text-gray-400 hover:text-red-500">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-whatsapp hover:text-whatsapp transition-colors"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                    Choose file (image, video, audio, document)
-                  </button>
-                )}
-              </div>
-              {selectedFile && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Media Type</label>
-                  <select
-                    value={form.type}
-                    onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none"
-                  >
-                    <option value="image">Image</option>
-                    <option value="video">Video</option>
-                    <option value="audio">Audio</option>
-                    <option value="document">Document</option>
-                  </select>
-                </div>
-              )}
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Recipients (one per line)</label>
                 <textarea
                   value={form.recipients}
@@ -300,13 +197,13 @@ export default function BroadcastsPage() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => { setShowCreate(false); clearFile(); }} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+              <button onClick={() => { setShowCreate(false); }} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
               <button
                 onClick={handleCreate}
-                disabled={isCreating || isUploading}
+                disabled={isCreating}
                 className="px-4 py-2 text-sm bg-whatsapp text-white rounded-lg hover:bg-whatsapp-dark disabled:opacity-50"
               >
-                {isCreating ? 'Creating...' : isUploading ? 'Uploading...' : 'Create'}
+                {isCreating ? 'Creating...' : 'Create'}
               </button>
             </div>
           </div>
@@ -344,17 +241,13 @@ export default function BroadcastsPage() {
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                      {bc.type !== 'text' && getTypeIcon(bc.type)}
-                      {bc.name}
+                        {bc.name}
                     </h3>
                     <p className="text-xs text-gray-500 mt-1">Device: {bc.device.name}</p>
                   </div>
                   <StatusBadge status={bc.status} />
                 </div>
                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">{bc.message}</p>
-                {bc.mediaUrl && (
-                  <p className="text-xs text-gray-400 mb-3 truncate">Attachment: {bc.mediaUrl}</p>
-                )}
                 <div className="mb-3">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>{sent} sent / {failed} failed / {total} total</span>

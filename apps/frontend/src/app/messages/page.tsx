@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { useApi } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Pagination } from '@/components/ui/pagination';
 import { EmptyState } from '@/components/ui/empty-state';
-import { MessageSquare, Send, Search, Paperclip, X, Image, FileText, Film, Music } from 'lucide-react';
+import { MessageSquare, Send, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Message {
@@ -18,7 +18,6 @@ interface Message {
   type: string;
   status: string;
   direction: string;
-  mediaUrl: string | null;
   sentAt: string | null;
   createdAt: string;
   device: { id: string; name: string };
@@ -30,13 +29,6 @@ interface Device {
   status: string;
 }
 
-function getTypeIcon(type: string) {
-  if (type.startsWith('image')) return <Image className="h-4 w-4 text-blue-500" />;
-  if (type.startsWith('video')) return <Film className="h-4 w-4 text-purple-500" />;
-  if (type.startsWith('audio')) return <Music className="h-4 w-4 text-green-500" />;
-  return <FileText className="h-4 w-4 text-gray-500" />;
-}
-
 export default function MessagesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -45,13 +37,8 @@ export default function MessagesPage() {
     deviceId: '',
     recipient: '',
     content: '',
-    type: 'text',
-    mediaUrl: '',
   });
   const [isSending, setIsSending] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const queryParams = new URLSearchParams({ page: String(page), limit: '20' });
   if (search) queryParams.set('recipient', search);
@@ -63,70 +50,21 @@ export default function MessagesPage() {
   const pagination = data?.pagination;
   const devices = deviceData?.data || [];
 
-  function getMediaType(mime: string): string {
-    if (mime.startsWith('image/')) return 'image';
-    if (mime.startsWith('video/')) return 'video';
-    if (mime.startsWith('audio/')) return 'audio';
-    return 'document';
-  }
-
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 16 * 1024 * 1024) {
-      toast.error('File size max 16MB');
-      return;
-    }
-    setSelectedFile(file);
-    setSendForm((prev) => ({ ...prev, type: getMediaType(file.type) }));
-  }
-
-  async function handleUpload(): Promise<string | null> {
-    if (!selectedFile) return null;
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      const res = await api.upload<{ success: boolean; data: { url: string } }>('/api/v1/upload', formData);
-      return res.data.url;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
-      return null;
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  function clearFile() {
-    setSelectedFile(null);
-    setSendForm((prev) => ({ ...prev, type: 'text', mediaUrl: '' }));
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
-
-  async function handleSend() {
+          async function handleSend() {
     if (!sendForm.deviceId || !sendForm.recipient) {
       toast.error('Please fill device and recipient');
       return;
     }
-    if (!sendForm.content && !selectedFile) {
-      toast.error('Please enter a message or attach a file');
+    if (!sendForm.content) {
+      toast.error('Please enter a message');
       return;
     }
     setIsSending(true);
     try {
-      let mediaUrl: string | null = sendForm.mediaUrl || null;
-      if (selectedFile) {
-        mediaUrl = await handleUpload();
-        if (!mediaUrl) { setIsSending(false); return; }
-      }
-      await api.post('/api/v1/messages/send', {
-        ...sendForm,
-        mediaUrl: mediaUrl || undefined,
-      });
+      await api.post('/api/v1/messages/send', sendForm);
       toast.success('Message sent');
       setShowSend(false);
-      setSendForm({ deviceId: '', recipient: '', content: '', type: 'text', mediaUrl: '' });
-      setSelectedFile(null);
+      setSendForm({ deviceId: '', recipient: '', content: '' });
       mutate();
     } catch {
       toast.error('Failed to send message');
@@ -196,59 +134,15 @@ export default function MessagesPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none resize-none"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Attach File (optional)</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  onChange={handleFileSelect}
-                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt"
-                  className="hidden"
-                />
-                {selectedFile ? (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                    {getTypeIcon(selectedFile.type)}
-                    <span className="text-sm text-gray-700 truncate flex-1">{selectedFile.name}</span>
-                    <span className="text-xs text-gray-400">{(selectedFile.size / 1024).toFixed(0)}KB</span>
-                    <button onClick={clearFile} className="text-gray-400 hover:text-red-500">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-whatsapp hover:text-whatsapp transition-colors"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                    Choose file (image, video, audio, document)
-                  </button>
-                )}
-              </div>
-              {selectedFile && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <select
-                    value={sendForm.type}
-                    onChange={(e) => setSendForm((prev) => ({ ...prev, type: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-whatsapp outline-none"
-                  >
-                    <option value="image">Image</option>
-                    <option value="video">Video</option>
-                    <option value="audio">Audio</option>
-                    <option value="document">Document</option>
-                  </select>
-                </div>
-              )}
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => { setShowSend(false); clearFile(); }} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
+              <button onClick={() => { setShowSend(false); }} className="px-4 py-2 text-sm text-gray-600">Cancel</button>
               <button
                 onClick={handleSend}
-                disabled={isSending || isUploading}
+                disabled={isSending}
                 className="px-4 py-2 text-sm bg-whatsapp text-white rounded-lg hover:bg-whatsapp-dark disabled:opacity-50 flex items-center gap-2"
               >
-                {isSending ? 'Sending...' : isUploading ? 'Uploading...' : <><Send className="h-4 w-4" /> Send</>}
+                {isSending ? 'Sending...' : <><Send className="h-4 w-4" /> Send</>}
               </button>
             </div>
           </div>
@@ -275,8 +169,7 @@ export default function MessagesPage() {
               <tr>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Recipient</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Message</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Device</th>
+                                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Device</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Date</th>
               </tr>
@@ -286,19 +179,9 @@ export default function MessagesPage() {
                 <tr key={msg.id} className="hover:bg-gray-50 border-b border-gray-100 last:border-0">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{msg.recipient}</td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    {msg.mediaUrl ? (
-                      <span className="flex items-center gap-1">
-                        {getTypeIcon(msg.type)}
-                        {msg.content || msg.type}
-                      </span>
-                    ) : msg.content}
+                    {msg.content}
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 capitalize">
-                      {getTypeIcon(msg.type)} {msg.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{msg.device.name}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-500">{msg.device.name}</td>
                   <td className="px-6 py-4"><StatusBadge status={msg.status} /></td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(msg.createdAt).toLocaleDateString()}
