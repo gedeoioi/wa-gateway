@@ -120,7 +120,7 @@ export default function MessagesPage() {
     }
     setIsSending(true);
     try {
-      let mediaUrl = sendForm.mediaUrl;
+      let mediaUrl: string | null = sendForm.mediaUrl || null;
       if (selectedFile) {
         mediaUrl = await handleUpload();
         if (!mediaUrl) { setIsSending(false); return; }
