@@ -1,0 +1,104 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: wa-gateway-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: wa_gateway
+      MYSQL_USER: wa_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wapassword}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - wa-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: wa-gateway-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wa-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: wa-gateway-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "mysql://wa_user:${MYSQL_PASSWORD:-wapassword}@mysql:3306/wa_gateway"
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "3001:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - wa-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: wa-gateway-frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BACKEND_URL: "http://backend:3001"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - wa-network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: wa-gateway-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - wa-network
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  wa-network:
+    driver: bridge

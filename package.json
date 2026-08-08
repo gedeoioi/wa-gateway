@@ -1,0 +1,35 @@
+{
+  "name": "wa-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WhatsApp Gateway Enterprise Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:backend": "npm run build -w @wa-gateway/backend",
+    "build:frontend": "npm run build -w @wa-gateway/frontend",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev -w @wa-gateway/backend",
+    "dev:frontend": "npm run dev -w @wa-gateway/frontend",
+    "clean": "npm run clean --workspaces --if-present",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:seed": "prisma db seed --schema=prisma/schema.prisma",
+    "start:prod": "npm run start -w @wa-gateway/backend"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  }
+}

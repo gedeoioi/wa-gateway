@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  email        String    @unique
+  password     String
+  role         UserRole  @default(operator)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  admin
+  operator
+  viewer
+}
+
+model Device {
+  id              String        @id @default(uuid())
+  name            String
+  phoneNumber     String?       @db.VarChar(20)
+  status          DeviceStatus  @default(disconnected)
+  isActive        Boolean       @default(true)
+  sessionData     String?       @db.LongText
+  lastConnectedAt DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  messages        Message[]
+  broadcasts      Broadcast[]
+
+  @@map("devices")
+}
+
+enum DeviceStatus {
+  connected
+  disconnected
+  connecting
+  qr_pending
+}
+
+model Message {
+  id           String          @id @default(uuid())
+  deviceId     String
+  recipient    String          @db.VarChar(20)
+  content      String          @db.LongText
+  type         MessageType     @default(text)
+  status       MessageStatus   @default(pending)
+  direction    MessageDirection @default(outbound)
+  mediaUrl     String?         @db.VarChar(500)
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  readAt       DateTime?
+  errorMessage String?         @db.VarChar(500)
+  broadcastId  String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  device       Device          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  broadcast    Broadcast?      @relation(fields: [broadcastId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId])
+  @@index([recipient])
+  @@index([status])
+  @@index([broadcastId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+enum MessageType {
+  text
+  image
+  video
+  document
+  audio
+}
+
+enum MessageStatus {
+  pending
+  sent
+  delivered
+  read
+  failed
+}
+
+enum MessageDirection {
+  inbound
+  outbound
+}
+
+model Broadcast {
+  id                  String           @id @default(uuid())
+  name                String           @db.VarChar(255)
+  deviceId            String
+  message             String           @db.LongText
+  type                MessageType      @default(text)
+  mediaUrl            String?          @db.VarChar(500)
+  status              BroadcastStatus  @default(draft)
+  totalRecipients     Int              @default(0)
+  sentCount           Int              @default(0)
+  failedCount         Int              @default(0)
+  delayBetweenMessages Int             @default(2000)
+  scheduledAt         DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  device              Device           @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  messages            Message[]
+
+  @@index([deviceId])
+  @@index([status])
+  @@map("broadcasts")
+}
+
+enum BroadcastStatus {
+  draft
+  scheduled
+  sending
+  completed
+  failed
+  cancelled
+}
+
+model Contact {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(255)
+  phoneNumber String   @unique @db.VarChar(20)
+  email       String?  @db.VarChar(255)
+  tags        String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  groups      ContactGroupMember[]
+
+  @@index([phoneNumber])
+  @@map("contacts")
+}
+
+model ContactGroup {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(255)
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     ContactGroupMember[]
+
+  @@map("contact_groups")
+}
+
+model ContactGroupMember {
+  id        String       @id @default(uuid())
+  contactId String
+  groupId   String
+  createdAt DateTime     @default(now())
+
+  contact   Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  group     ContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, groupId])
+  @@map("contact_group_members")
+}
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  name      String    @db.VarChar(255)
+  key       String    @unique @db.VarChar(64)
+  userId    String
+  isActive  Boolean   @default(true)
+  lastUsedAt DateTime?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([key])
+  @@map("api_keys")
+}

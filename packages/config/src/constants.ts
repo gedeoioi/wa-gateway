@@ -1,0 +1,10 @@
+export const APP_NAME = 'WA Gateway Enterprise';
+export const APP_VERSION = '1.0.0';
+export const API_PREFIX = '/api/v1';
+export const MAX_BROADCAST_RECIPIENTS = 10000;
+export const DEFAULT_MESSAGE_DELAY_MS = 2000;
+export const MAX_MESSAGE_DELAY_MS = 30000;
+export const QR_CODE_TIMEOUT_MS = 60000;
+export const SESSION_DATA_DIR = './sessions';
+export const UPLOAD_DIR = './uploads';
+export const MAX_FILE_SIZE_MB = 16;
