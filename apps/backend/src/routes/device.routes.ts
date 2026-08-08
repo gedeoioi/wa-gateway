@@ -39,7 +39,7 @@ router.get('/:id', authenticate, getDevice);
 router.get('/:id/qr', authenticate, getDeviceQR);
 router.post('/', authenticate, authorize('admin', 'operator'), validate(createDeviceSchema), createDevice);
 router.put('/:id', authenticate, authorize('admin', 'operator'), updateDevice);
-router.delete('/:id', authenticate, authorize('admin'), deleteDevice);
+router.delete('/:id', authenticate, authorize('admin', 'operator'), deleteDevice);
 router.post('/:id/connect', authenticate, authorize('admin', 'operator'), connectDevice);
 router.post('/:id/disconnect', authenticate, authorize('admin', 'operator'), disconnectDevice);
 

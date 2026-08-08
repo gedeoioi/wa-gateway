@@ -13,6 +13,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  UserPlus,
+  Lock,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -22,6 +24,8 @@ const navItems = [
   { href: '/messages', label: 'Messages', icon: MessageSquare },
   { href: '/broadcasts', label: 'Broadcasts', icon: Send },
   { href: '/contacts', label: 'Contacts', icon: Users },
+  { href: '/users', label: 'Users', icon: UserPlus, adminOnly: true },
+  { href: '/change-password', label: 'Change Password', icon: Lock },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -29,6 +33,13 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  const filteredNavItems = navItems.filter((item) => {
+    if ('adminOnly' in item && item.adminOnly) {
+      return user?.role === 'admin';
+    }
+    return true;
+  });
 
   return (
     <aside
@@ -54,7 +65,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link

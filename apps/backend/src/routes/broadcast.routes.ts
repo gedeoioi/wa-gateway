@@ -43,6 +43,6 @@ router.get('/:id', authenticate, getBroadcast);
 router.post('/', authenticate, authorize('admin', 'operator'), validate(createBroadcastSchema), createBroadcast);
 router.post('/:id/start', authenticate, authorize('admin', 'operator'), startBroadcast);
 router.post('/:id/cancel', authenticate, authorize('admin', 'operator'), cancelBroadcast);
-router.delete('/:id', authenticate, authorize('admin'), deleteBroadcast);
+router.delete('/:id', authenticate, authorize('admin', 'operator'), deleteBroadcast);
 
 export { router as broadcastRoutes };

@@ -10,7 +10,7 @@ export async function getContacts(req: AuthRequest, res: Response, next: NextFun
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId: req.user!.id };
     if (req.query.search) {
       where.OR = [
         { name: { contains: req.query.search as string } },
@@ -47,8 +47,8 @@ export async function createContact(req: AuthRequest, res: Response, next: NextF
     const { name, phoneNumber, email, tags, groupId } = req.body;
     const formattedPhone = formatPhoneNumber(phoneNumber);
 
-    const existing = await prisma.contact.findUnique({
-      where: { phoneNumber: formattedPhone },
+    const existing = await prisma.contact.findFirst({
+      where: { userId: req.user!.id, phoneNumber: formattedPhone },
     });
     if (existing) {
       throw new AppError('Phone number already exists', 409);
@@ -56,6 +56,7 @@ export async function createContact(req: AuthRequest, res: Response, next: NextF
 
     const contact = await prisma.contact.create({
       data: {
+        userId: req.user!.id,
         name,
         phoneNumber: formattedPhone,
         email,
@@ -74,16 +75,24 @@ export async function createContact(req: AuthRequest, res: Response, next: NextF
 export async function updateContact(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { name, email, tags } = req.body;
+
+    const contact = await prisma.contact.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (!contact) {
+      throw new AppError('Contact not found', 404);
+    }
+
     const updateData: Record<string, unknown> = {};
     if (name) updateData.name = name;
     if (email !== undefined) updateData.email = email;
     if (tags) updateData.tags = JSON.stringify(tags);
 
-    const contact = await prisma.contact.update({
-      where: { id: req.params.id },
+    const updated = await prisma.contact.update({
+      where: { id: contact.id },
       data: updateData,
     });
-    res.json({ success: true, data: contact });
+    res.json({ success: true, data: updated });
   } catch (error) {
     next(error);
   }
@@ -91,16 +100,24 @@ export async function updateContact(req: AuthRequest, res: Response, next: NextF
 
 export async function deleteContact(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    await prisma.contact.delete({ where: { id: req.params.id } });
+    const contact = await prisma.contact.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (!contact) {
+      throw new AppError('Contact not found', 404);
+    }
+
+    await prisma.contact.delete({ where: { id: contact.id } });
     res.json({ success: true, message: 'Contact deleted' });
   } catch (error) {
     next(error);
   }
 }
 
-export async function getGroups(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getGroups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const groups = await prisma.contactGroup.findMany({
+      where: { userId: req.user!.id },
       orderBy: { name: 'asc' },
       include: { _count: { select: { members: true } } },
     });
@@ -114,7 +131,7 @@ export async function createGroup(req: AuthRequest, res: Response, next: NextFun
   try {
     const { name, description } = req.body;
     const group = await prisma.contactGroup.create({
-      data: { name, description },
+      data: { userId: req.user!.id, name, description },
     });
     res.status(201).json({ success: true, data: group });
   } catch (error) {
@@ -124,8 +141,15 @@ export async function createGroup(req: AuthRequest, res: Response, next: NextFun
 
 export async function deleteGroup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    await prisma.contactGroupMember.deleteMany({ where: { groupId: req.params.id } });
-    await prisma.contactGroup.delete({ where: { id: req.params.id } });
+    const group = await prisma.contactGroup.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (!group) {
+      throw new AppError('Group not found', 404);
+    }
+
+    await prisma.contactGroupMember.deleteMany({ where: { groupId: group.id } });
+    await prisma.contactGroup.delete({ where: { id: group.id } });
     res.json({ success: true, message: 'Group deleted' });
   } catch (error) {
     next(error);
@@ -135,6 +159,20 @@ export async function deleteGroup(req: AuthRequest, res: Response, next: NextFun
 export async function addContactToGroup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { contactId, groupId } = req.body;
+
+    const contact = await prisma.contact.findFirst({
+      where: { id: contactId, userId: req.user!.id },
+    });
+    if (!contact) {
+      throw new AppError('Contact not found', 404);
+    }
+
+    const group = await prisma.contactGroup.findFirst({
+      where: { id: groupId, userId: req.user!.id },
+    });
+    if (!group) {
+      throw new AppError('Group not found', 404);
+    }
 
     const existing = await prisma.contactGroupMember.findUnique({
       where: { contactId_groupId: { contactId, groupId } },
@@ -155,6 +193,14 @@ export async function addContactToGroup(req: AuthRequest, res: Response, next: N
 export async function removeContactFromGroup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { contactId, groupId } = req.params;
+
+    const contact = await prisma.contact.findFirst({
+      where: { id: contactId, userId: req.user!.id },
+    });
+    if (!contact) {
+      throw new AppError('Contact not found', 404);
+    }
+
     await prisma.contactGroupMember.delete({
       where: { contactId_groupId: { contactId, groupId } },
     });

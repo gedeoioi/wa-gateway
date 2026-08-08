@@ -1,6 +1,17 @@
 import { Router } from 'express';
-import { register, login, refreshToken, getProfile, updateProfile } from '../controllers/auth.controller';
-import { authenticate } from '../middleware/auth';
+import {
+  register,
+  login,
+  refreshToken,
+  getProfile,
+  updateProfile,
+  changePassword,
+  listUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+} from '../controllers/auth.controller';
+import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
 
@@ -27,73 +38,41 @@ const refreshSchema = z.object({
   }),
 });
 
-/**
- * @swagger
- * /api/v1/auth/login:
- *   post:
- *     summary: Login user
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [username, password]
- *             properties:
- *               username:
- *                 type: string
- *                 example: admin
- *               password:
- *                 type: string
- *                 example: admin123
- *     responses:
- *       200:
- *         description: Login successful
- *       401:
- *         description: Invalid credentials
- */
+const changePasswordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(6),
+  }),
+});
+
+const createUserSchema = z.object({
+  body: z.object({
+    username: z.string().min(3).max(50),
+    email: z.string().email(),
+    password: z.string().min(6),
+    role: z.enum(['admin', 'operator', 'viewer']).optional(),
+  }),
+});
+
+const updateUserSchema = z.object({
+  body: z.object({
+    email: z.string().email().optional(),
+    role: z.enum(['admin', 'operator', 'viewer']).optional(),
+    isActive: z.boolean().optional(),
+  }),
+});
+
 router.post('/register', validate(registerSchema), register);
 router.post('/login', validate(loginSchema), login);
-
-/**
- * @swagger
- * /api/v1/auth/refresh:
- *   post:
- *     summary: Refresh access token
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [refreshToken]
- *             properties:
- *               refreshToken:
- *                 type: string
- *     responses:
- *       200:
- *         description: Token refreshed
- *       401:
- *         description: Invalid refresh token
- */
 router.post('/refresh', validate(refreshSchema), refreshToken);
 
-/**
- * @swagger
- * /api/v1/auth/profile:
- *   get:
- *     summary: Get user profile
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User profile
- */
 router.get('/profile', authenticate, getProfile);
-
 router.put('/profile', authenticate, updateProfile);
+router.put('/change-password', authenticate, validate(changePasswordSchema), changePassword);
+
+router.get('/users', authenticate, authorize('admin'), listUsers);
+router.post('/users', authenticate, authorize('admin'), validate(createUserSchema), createUser);
+router.put('/users/:id', authenticate, authorize('admin'), validate(updateUserSchema), updateUser);
+router.delete('/users/:id', authenticate, authorize('admin'), deleteUser);
 
 export { router as authRoutes };

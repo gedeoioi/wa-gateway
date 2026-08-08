@@ -5,9 +5,10 @@ import { AuthRequest } from '../middleware/auth';
 import { getWhatsAppService } from '../services/whatsapp.service';
 import { logger } from '../lib/logger';
 
-export async function getDevices(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function getDevices(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const devices = await prisma.device.findMany({
+      where: { userId: req.user!.id },
       orderBy: { createdAt: 'desc' },
     });
     res.json({ success: true, data: devices });
@@ -18,8 +19,8 @@ export async function getDevices(_req: AuthRequest, res: Response, next: NextFun
 
 export async function getDevice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const device = await prisma.device.findUnique({
-      where: { id: req.params.id },
+    const device = await prisma.device.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
     });
     if (!device) {
       throw new AppError('Device not found', 404);
@@ -34,7 +35,7 @@ export async function createDevice(req: AuthRequest, res: Response, next: NextFu
   try {
     const { name } = req.body;
     const device = await prisma.device.create({
-      data: { name },
+      data: { name, userId: req.user!.id },
     });
     logger.info(`Device created: ${device.id} by ${req.user!.username}`);
     res.status(201).json({ success: true, data: device });
@@ -45,7 +46,9 @@ export async function createDevice(req: AuthRequest, res: Response, next: NextFu
 
 export async function connectDevice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const device = await prisma.device.findUnique({ where: { id: req.params.id } });
+    const device = await prisma.device.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
     if (!device) {
       throw new AppError('Device not found', 404);
     }
@@ -61,7 +64,9 @@ export async function connectDevice(req: AuthRequest, res: Response, next: NextF
 
 export async function disconnectDevice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const device = await prisma.device.findUnique({ where: { id: req.params.id } });
+    const device = await prisma.device.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
     if (!device) {
       throw new AppError('Device not found', 404);
     }
@@ -77,6 +82,13 @@ export async function disconnectDevice(req: AuthRequest, res: Response, next: Ne
 
 export async function getDeviceQR(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const device = await prisma.device.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (!device) {
+      throw new AppError('Device not found', 404);
+    }
+
     const waService = getWhatsAppService();
     const qrDataUrl = waService.getDeviceQR(req.params.id);
 
@@ -93,7 +105,9 @@ export async function getDeviceQR(req: AuthRequest, res: Response, next: NextFun
 
 export async function deleteDevice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const device = await prisma.device.findUnique({ where: { id: req.params.id } });
+    const device = await prisma.device.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
     if (!device) {
       throw new AppError('Device not found', 404);
     }
@@ -115,15 +129,23 @@ export async function deleteDevice(req: AuthRequest, res: Response, next: NextFu
 export async function updateDevice(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { name, isActive } = req.body;
+
+    const device = await prisma.device.findFirst({
+      where: { id: req.params.id, userId: req.user!.id },
+    });
+    if (!device) {
+      throw new AppError('Device not found', 404);
+    }
+
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (isActive !== undefined) updateData.isActive = isActive;
 
-    const device = await prisma.device.update({
-      where: { id: req.params.id },
+    const updated = await prisma.device.update({
+      where: { id: device.id },
       data: updateData,
     });
-    res.json({ success: true, data: device });
+    res.json({ success: true, data: updated });
   } catch (error) {
     next(error);
   }

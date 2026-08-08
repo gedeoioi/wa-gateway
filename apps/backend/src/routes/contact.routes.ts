@@ -48,11 +48,11 @@ const createGroupSchema = z.object({
 router.get('/', authenticate, getContacts);
 router.post('/', authenticate, authorize('admin', 'operator'), validate(createContactSchema), createContact);
 router.put('/:id', authenticate, authorize('admin', 'operator'), updateContact);
-router.delete('/:id', authenticate, authorize('admin'), deleteContact);
+router.delete('/:id', authenticate, authorize('admin', 'operator'), deleteContact);
 
 router.get('/groups', authenticate, getGroups);
 router.post('/groups', authenticate, authorize('admin', 'operator'), validate(createGroupSchema), createGroup);
-router.delete('/groups/:id', authenticate, authorize('admin'), deleteGroup);
+router.delete('/groups/:id', authenticate, authorize('admin', 'operator'), deleteGroup);
 router.post('/groups/members', authenticate, authorize('admin', 'operator'), addContactToGroup);
 router.delete('/groups/:groupId/members/:contactId', authenticate, authorize('admin', 'operator'), removeContactFromGroup);
 

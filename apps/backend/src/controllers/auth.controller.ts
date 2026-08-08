@@ -177,3 +177,133 @@ export async function updateProfile(req: AuthRequest, res: Response, next: NextF
     next(error);
   }
 }
+
+export async function changePassword(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new AppError('Current password is incorrect', 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { password: hashedPassword },
+    });
+
+    logger.info(`User ${req.user!.username} changed password`);
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listUsers(_req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ success: true, data: users });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createUser(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { username, email, password, role } = req.body;
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ username }, { email }],
+      },
+    });
+
+    if (existingUser) {
+      throw new AppError('Username or email already exists', 409);
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        username,
+        email,
+        password: hashedPassword,
+        role: role || 'operator',
+      },
+      select: { id: true, username: true, email: true, role: true, isActive: true, createdAt: true },
+    });
+
+    logger.info(`Admin ${req.user!.username} created user ${username}`);
+
+    res.status(201).json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateUser(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { email, role, isActive } = req.body;
+
+    const updateData: Record<string, unknown> = {};
+    if (email !== undefined) updateData.email = email;
+    if (role !== undefined) updateData.role = role;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: { id: true, username: true, email: true, role: true, isActive: true },
+    });
+
+    logger.info(`Admin ${req.user!.username} updated user ${user.username}`);
+
+    res.json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteUser(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user!.id) {
+      throw new AppError('Cannot delete your own account', 400);
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    await prisma.user.delete({ where: { id } });
+
+    logger.info(`Admin ${req.user!.username} deleted user ${user.username}`);
+
+    res.json({ success: true, message: 'User deleted' });
+  } catch (error) {
+    next(error);
+  }
+}

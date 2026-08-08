@@ -14,7 +14,7 @@ export async function getBroadcasts(req: AuthRequest, res: Response, next: NextF
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { device: { userId: req.user!.id } };
     if (req.query.status) where.status = req.query.status;
     if (req.query.deviceId) where.deviceId = req.query.deviceId;
 
@@ -41,8 +41,8 @@ export async function getBroadcasts(req: AuthRequest, res: Response, next: NextF
 
 export async function getBroadcast(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const broadcast = await prisma.broadcast.findUnique({
-      where: { id: req.params.id },
+    const broadcast = await prisma.broadcast.findFirst({
+      where: { id: req.params.id, device: { userId: req.user!.id } },
       include: {
         device: { select: { id: true, name: true, status: true } },
         messages: { orderBy: { createdAt: 'desc' }, take: 100 },
@@ -61,7 +61,9 @@ export async function createBroadcast(req: AuthRequest, res: Response, next: Nex
   try {
     const { deviceId, name, message, type = 'text', mediaUrl, recipients, scheduledAt, delayBetweenMessages = 2000 } = req.body;
 
-    const device = await prisma.device.findUnique({ where: { id: deviceId } });
+    const device = await prisma.device.findFirst({
+      where: { id: deviceId, userId: req.user!.id },
+    });
     if (!device) {
       throw new AppError('Device not found', 404);
     }
@@ -108,8 +110,8 @@ export async function startBroadcast(req: AuthRequest, res: Response, next: Next
       throw new AppError('Server queue is not ready. Redis may not be running. Please restart the backend.', 503);
     }
 
-    const broadcast = await prisma.broadcast.findUnique({
-      where: { id: req.params.id },
+    const broadcast = await prisma.broadcast.findFirst({
+      where: { id: req.params.id, device: { userId: req.user!.id } },
     });
     if (!broadcast) {
       throw new AppError('Broadcast not found', 404);
@@ -200,8 +202,8 @@ export async function startBroadcast(req: AuthRequest, res: Response, next: Next
 
 export async function cancelBroadcast(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const broadcast = await prisma.broadcast.findUnique({
-      where: { id: req.params.id },
+    const broadcast = await prisma.broadcast.findFirst({
+      where: { id: req.params.id, device: { userId: req.user!.id } },
     });
     if (!broadcast) {
       throw new AppError('Broadcast not found', 404);
@@ -226,8 +228,8 @@ export async function cancelBroadcast(req: AuthRequest, res: Response, next: Nex
 
 export async function deleteBroadcast(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const broadcast = await prisma.broadcast.findUnique({
-      where: { id: req.params.id },
+    const broadcast = await prisma.broadcast.findFirst({
+      where: { id: req.params.id, device: { userId: req.user!.id } },
     });
     if (!broadcast) {
       throw new AppError('Broadcast not found', 404);

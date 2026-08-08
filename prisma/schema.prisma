@@ -18,6 +18,11 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  devices      Device[]
+  contacts     Contact[]
+  contactGroups ContactGroup[]
+  apiKeys      ApiKey[]
+
   @@map("users")
 }
 
@@ -29,6 +34,7 @@ enum UserRole {
 
 model Device {
   id              String        @id @default(uuid())
+  userId          String
   name            String
   phoneNumber     String?       @db.VarChar(20)
   status          DeviceStatus  @default(disconnected)
@@ -38,9 +44,11 @@ model Device {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages        Message[]
   broadcasts      Broadcast[]
 
+  @@index([userId])
   @@map("devices")
 }
 
@@ -137,28 +145,36 @@ enum BroadcastStatus {
 
 model Contact {
   id          String   @id @default(uuid())
+  userId      String
   name        String   @db.VarChar(255)
-  phoneNumber String   @unique @db.VarChar(20)
+  phoneNumber String   @db.VarChar(20)
   email       String?  @db.VarChar(255)
   tags        String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   groups      ContactGroupMember[]
 
+  @@unique([userId, phoneNumber])
+  @@index([userId])
   @@index([phoneNumber])
   @@map("contacts")
 }
 
 model ContactGroup {
   id          String   @id @default(uuid())
-  name        String   @unique @db.VarChar(255)
+  userId      String
+  name        String   @db.VarChar(255)
   description String?  @db.VarChar(500)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   members     ContactGroupMember[]
 
+  @@unique([userId, name])
+  @@index([userId])
   @@map("contact_groups")
 }
 
@@ -184,6 +200,8 @@ model ApiKey {
   lastUsedAt DateTime?
   expiresAt DateTime?
   createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([key])
   @@map("api_keys")

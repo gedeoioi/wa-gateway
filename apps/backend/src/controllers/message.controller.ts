@@ -12,7 +12,7 @@ export async function getMessages(req: AuthRequest, res: Response, next: NextFun
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { device: { userId: req.user!.id } };
     if (req.query.deviceId) where.deviceId = req.query.deviceId;
     if (req.query.status) where.status = req.query.status;
     if (req.query.direction) where.direction = req.query.direction;
@@ -48,7 +48,9 @@ export async function sendMessage(req: AuthRequest, res: Response, next: NextFun
   try {
     const { deviceId, recipient, content, type = 'text', mediaUrl } = req.body;
 
-    const device = await prisma.device.findUnique({ where: { id: deviceId } });
+    const device = await prisma.device.findFirst({
+      where: { id: deviceId, userId: req.user!.id },
+    });
     if (!device) {
       throw new AppError('Device not found', 404);
     }
@@ -96,11 +98,13 @@ export async function sendMessage(req: AuthRequest, res: Response, next: NextFun
 
 export async function getMessageStats(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const userDeviceFilter = { device: { userId: req.user!.id } };
+
     const [total, sent, delivered, failed] = await Promise.all([
-      prisma.message.count(),
-      prisma.message.count({ where: { status: 'sent' } }),
-      prisma.message.count({ where: { status: 'delivered' } }),
-      prisma.message.count({ where: { status: 'failed' } }),
+      prisma.message.count({ where: userDeviceFilter }),
+      prisma.message.count({ where: { ...userDeviceFilter, status: 'sent' } }),
+      prisma.message.count({ where: { ...userDeviceFilter, status: 'delivered' } }),
+      prisma.message.count({ where: { ...userDeviceFilter, status: 'failed' } }),
     ]);
 
     res.json({
