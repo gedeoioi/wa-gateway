@@ -92,8 +92,18 @@ export default function SettingsPage() {
 
   async function handleRevokeSessions() {
     try {
-      await api.post('/api/v1/auth/revoke-sessions');
+      const res = await api.post<{ success: boolean; data: { accessToken: string; refreshToken: string } }>('/api/v1/auth/revoke-sessions');
+      if (res.data) {
+        localStorage.setItem('accessToken', res.data.accessToken);
+        localStorage.setItem('refreshToken', res.data.refreshToken);
+      }
       toast.success('All other sessions revoked');
+      const [sessionRes, historyRes] = await Promise.all([
+        api.get<{ success: boolean; data: SessionData }>('/api/v1/auth/session'),
+        api.get<{ success: boolean; data: LoginRecord[] }>('/api/v1/auth/login-history?limit=10'),
+      ]);
+      setSession(sessionRes.data);
+      setLoginHistory(historyRes.data);
     } catch {
       toast.error('Failed to revoke sessions');
     }

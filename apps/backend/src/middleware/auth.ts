@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import prisma from '../lib/prisma';
 
 export interface AuthRequest extends Request {
@@ -27,12 +27,21 @@ export async function authenticate(
       id: string;
       username: string;
       role: string;
+      iat: number;
     };
 
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!user || !user.isActive) {
       res.status(401).json({ success: false, error: 'Invalid token' });
       return;
+    }
+
+    if (user.lastPasswordChange) {
+      const revokedAt = Math.floor(user.lastPasswordChange.getTime() / 1000);
+      if (decoded.iat < revokedAt) {
+        res.status(401).json({ success: false, error: 'Session revoked' });
+        return;
+      }
     }
 
     req.user = { id: user.id, username: user.username, role: user.role };

@@ -332,9 +332,10 @@ export async function getActiveSession(req: AuthRequest, res: Response, next: Ne
 
 export async function revokeAllSessions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    const now = new Date();
     await prisma.user.update({
       where: { id: req.user!.id },
-      data: { lastPasswordChange: new Date() },
+      data: { lastPasswordChange: now },
     });
 
     await prisma.loginHistory.create({
@@ -347,9 +348,25 @@ export async function revokeAllSessions(req: AuthRequest, res: Response, next: N
       },
     });
 
+    const accessToken = jwt.sign(
+      { id: req.user!.id, username: req.user!.username, role: req.user!.role },
+      process.env.JWT_SECRET || 'secret',
+      ACCESS_TOKEN_OPTIONS,
+    );
+
+    const refreshToken = jwt.sign(
+      { id: req.user!.id },
+      process.env.JWT_REFRESH_SECRET || 'refresh-secret',
+      REFRESH_TOKEN_OPTIONS,
+    );
+
     logger.info(`User ${req.user!.username} revoked all sessions`);
 
-    res.json({ success: true, message: 'All other sessions have been revoked' });
+    res.json({
+      success: true,
+      message: 'All other sessions have been revoked',
+      data: { accessToken, refreshToken },
+    });
   } catch (error) {
     next(error);
   }
