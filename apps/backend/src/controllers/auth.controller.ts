@@ -170,11 +170,19 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
 
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'refresh-secret') as {
       id: string;
+      iat: number;
     };
 
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!user || !user.isActive) {
       throw new AppError('Invalid refresh token', 401);
+    }
+
+    if (user.lastPasswordChange) {
+      const revokedAt = Math.floor(user.lastPasswordChange.getTime() / 1000);
+      if (decoded.iat < revokedAt) {
+        throw new AppError('Refresh token revoked', 401);
+      }
     }
 
     const accessToken = jwt.sign(
@@ -332,7 +340,8 @@ export async function getActiveSession(req: AuthRequest, res: Response, next: Ne
 
 export async function revokeAllSessions(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const now = new Date();
+    const now = new Date(Date.now() + 1000);
+
     await prisma.user.update({
       where: { id: req.user!.id },
       data: { lastPasswordChange: now },
