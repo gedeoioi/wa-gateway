@@ -59,6 +59,28 @@ Dibangun dengan Node.js + Baileys (backend) dan Next.js + Tailwind (frontend).
 - Target sentuh minimal 44px dan input 16px agar iOS tidak auto-zoom
 - Breakpoint `xs` (400px) kustom untuk HP kecil, didefinisikan di `tailwind.config.ts`
 
+### Paket & Admin Panel
+Satu sumber kebenaran untuk paket ada di `backend/src/config/plans.js`. Paket menentukan
+kuota pesan dan batas device, sehingga tabel harga di landing page benar-benar ditegakkan.
+
+| Paket | Harga | Kuota | Device |
+| --- | --- | --- | --- |
+| Free | Rp0 | 1.000 pesan/bulan | 1 |
+| Pro | Rp99rb | 25.000 pesan/bulan | 3 |
+| Business | Rp299rb | 100.000 pesan/bulan | 10 |
+
+Admin panel (`/dashboard/admin`, hanya untuk `role=admin`) menyediakan:
+- Statistik platform: jumlah member, device, pesan, broadcast, dan distribusi paket
+- Daftar member dengan pencarian dan filter paket/status
+- Ubah paket member — kuota dan batas device otomatis ikut menyesuaikan
+- Override kuota dan batas device per member (dibatasi `globalMaxDevices`)
+- Suspend/aktifkan akun, ubah role, reset pemakaian, perpanjang masa kuota
+- Lihat dan logout device milik member, serta perintah reconnect semua device
+
+Batasan yang disengaja: admin **tidak** dapat membaca isi pesan atau nomor tujuan
+pelanggan member, hanya angka statistik. Admin juga tidak dapat menurunkan role atau
+menonaktifkan akunnya sendiri, dan admin terakhir tidak dapat di-demote.
+
 ---
 
 ## 2. Struktur Project
@@ -72,16 +94,17 @@ wa-gateway/
 │   └── src/
 │       ├── server.js           # entrypoint: HTTP + Socket.IO + worker + restore device
 │       ├── app.js              # Express app & routing
-│       ├── config/             # env, logger
+│       ├── config/             # env, logger, plans (kuota & batas device)
 │       ├── db/prisma.js
 │       ├── lib/                # security (hash/encrypt), phone, openapi
-│       ├── middleware/auth.js  # JWT, API key, rate limit, error, upload
+│       ├── middleware/auth.js  # JWT, API key, admin, rate limit, error, upload
 │       ├── modules/
 │       │   ├── auth/           # register, login, me, stats
 │       │   ├── device/         # CRUD device, QR, reconnect, logout
 │       │   ├── message/        # single chat, logs, check-number
 │       │   ├── broadcast/      # create, preview, start, cancel, detail
-│       │   └── apikey/         # buat, reveal, revoke
+│       │   ├── apikey/         # buat, reveal, revoke
+│       │   └── admin/          # kelola member, paket, device (role=admin)
 │       ├── whatsapp/
 │       │   ├── manager.js      # WaSession (Baileys) per device
 │       │   └── dispatcher.js   # jalur kirim tunggal + kuota
@@ -91,9 +114,9 @@ wa-gateway/
 └── frontend/
     └── src/
         ├── app/
-        │   ├── page.tsx                        # landing
+        │   ├── page.tsx                        # landing (paket dari API)
         │   ├── (auth)/login, (auth)/register
-        │   └── dashboard/                      # layout + 7 halaman
+        │   └── dashboard/                      # layout + 8 halaman (termasuk admin)
         ├── components/                         # StatusBadge, ProgressBar, Toast
         └── lib/                                # api client, auth context, socket hook
 ```
@@ -158,16 +181,51 @@ Bila `REDIS_URL` kosong, worker tidak diperlukan dan broadcast dijalankan inline
 > tabel `Message` ditambahkan, jalankan `npx prisma db push` lagi (atau buat
 > migration baru) agar indeks untuk lookup `getMessage` Baileys ikut terpasang.
 
-### 3.5 Test
+### 3.5 Akun Admin
+
+Admin panel tidak bisa diakses dari UI biasa — akun admin dibuat lewat seed:
 
 ```bash
 cd backend
-npm test              # 41 skenario end-to-end (tanpa perlu PostgreSQL/Redis)
+npm run seed:admin
 ```
 
-Test memakai Prisma double in-memory sehingga bisa dijalankan tanpa database.
-Mencakup auth, pembuatan device, API key + scope, single chat, broadcast,
-kuota, isolasi antar user, dan pencabutan key.
+Tanpa env var, password acak di-generate dan ditampilkan **sekali**:
+
+```
+Admin account created.
+  Email    : admin@wagateway.local
+  Password : wag-9Pi2SU3FLlUy
+```
+
+Untuk menentukan sendiri:
+
+```bash
+# Windows PowerShell
+$env:ADMIN_EMAIL="admin@domain.com"; $env:ADMIN_PASSWORD="passwordkuat123"; npm run seed:admin
+
+# bash
+ADMIN_EMAIL=admin@domain.com ADMIN_PASSWORD=passwordkuat123 npm run seed:admin
+```
+
+Seed ini idempoten: menjalankannya lagi akan **mempromosikan** akun yang sudah ada
+(bukan menduplikasi). Setelah login, menu **Admin Panel** muncul di sidebar.
+
+Member lain bisa dijadikan admin dari dalam admin panel (tombol "Jadikan admin"),
+dengan pengaman: admin terakhir tidak bisa di-demote dan admin tidak bisa
+menurunkan atau menonaktifkan akunnya sendiri.
+
+### 3.6 Test
+
+```bash
+cd backend
+npm test              # 3 suite, 102 skenario (tanpa perlu PostgreSQL/Redis)
+```
+
+Test memakai Prisma double in-memory sehingga bisa dijalankan tanpa database:
+- `_e2e.mjs` — auth, device, API key + scope, single chat, broadcast, kuota, isolasi data
+- `_worker-quota.test.mjs` — worker broadcast berhenti saat kuota habis
+- `_admin.test.mjs` — otorisasi admin, perubahan paket, batas device, privasi data
 
 ---
 

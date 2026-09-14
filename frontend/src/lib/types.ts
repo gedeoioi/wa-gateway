@@ -5,10 +5,70 @@ export interface User {
   email: string;
   name: string | null;
   plan: string;
+  planName?: string;
   role: string;
   usedThisMonth: number;
   monthlyQuota: number;
+  deviceLimit?: number;
   createdAt?: string;
+}
+
+/* ---------------------------------- admin --------------------------------- */
+
+export interface PlanOption {
+  id: string;
+  name: string;
+  price: number;
+  priceLabel: string;
+  period: string;
+  monthlyQuota: number;
+  maxDevices: number;
+  features: string[];
+  highlighted: boolean;
+}
+
+export interface AdminMember {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  plan: string;
+  planName: string;
+  isActive: boolean;
+  monthlyQuota: number;
+  usedThisMonth: number;
+  quotaPercent: number;
+  quotaResetAt: string | null;
+  deviceLimit: number;
+  deviceLimitOverride: number | null;
+  planDeviceLimit: number;
+  adminNote: string | null;
+  devices: number;
+  devicesConnected: number;
+  messagesSent: number;
+  messagesFailed: number;
+  broadcasts: number;
+  createdAt: string;
+}
+
+export interface AdminStats {
+  users: { total: number; active: number; suspended: number; admins: number };
+  devices: { total: number; connected: number };
+  messages: { sent: number; failed: number };
+  broadcasts: number;
+  quota: { used: number; allocated: number };
+  byPlan: { plan: string; count: number }[];
+}
+
+export interface AdminMemberDevice {
+  id: string;
+  name: string;
+  phoneNumber: string | null;
+  status: DeviceStatus;
+  lastError: string | null;
+  lastSeenAt: string | null;
+  createdAt: string;
+  live?: boolean;
 }
 
 export interface Device {

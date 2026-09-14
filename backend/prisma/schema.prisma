@@ -20,6 +20,12 @@ model User {
   usedThisMonth Int @default(0)
   quotaResetAt DateTime @default(now())
 
+  // Per-user device allowance. Null means "inherit from the plan"; admins use
+  // this to grant a specific member more (or fewer) devices than their plan.
+  deviceLimitOverride Int?
+  // Free-form note visible to admins (e.g. why a plan was granted).
+  adminNote  String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

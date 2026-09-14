@@ -40,32 +40,73 @@ const STEPS = [
   { step: "03", title: "Kirim pesan", body: "Mulai single chat, broadcast, atau panggil REST API." },
 ];
 
-const PLANS = [
+// Rendered per request so the pricing table always reflects the plan catalog
+// the backend actually enforces.
+export const dynamic = "force-dynamic";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+interface PlanCard {
+  id: string;
+  name: string;
+  priceLabel: string;
+  period: string;
+  monthlyQuota: number;
+  maxDevices: number;
+  features: string[];
+  highlighted: boolean;
+}
+
+// Used only when the API is unreachable, so the landing page still renders.
+const FALLBACK_PLANS: PlanCard[] = [
   {
+    id: "free",
     name: "Free",
-    price: "Rp0",
+    priceLabel: "Rp0",
     period: "/bulan",
-    highlight: false,
+    monthlyQuota: 1000,
+    maxDevices: 1,
     features: ["1 device WhatsApp", "1.000 pesan/bulan", "Single chat & broadcast", "REST API + Swagger"],
-    cta: "Mulai gratis",
+    highlighted: false,
   },
   {
+    id: "pro",
     name: "Pro",
-    price: "Rp99rb",
+    priceLabel: "Rp99rb",
     period: "/bulan",
-    highlight: true,
+    monthlyQuota: 25000,
+    maxDevices: 3,
     features: ["3 device WhatsApp", "25.000 pesan/bulan", "Queue prioritas", "Webhook & laporan ekspor"],
-    cta: "Pilih Pro",
+    highlighted: true,
   },
   {
+    id: "business",
     name: "Business",
-    price: "Rp299rb",
+    priceLabel: "Rp299rb",
     period: "/bulan",
-    highlight: false,
+    monthlyQuota: 100000,
+    maxDevices: 10,
     features: ["10 device WhatsApp", "100.000 pesan/bulan", "Support prioritas", "SLA & on-premise"],
-    cta: "Hubungi kami",
+    highlighted: false,
   },
 ];
+
+const PLAN_CTA: Record<string, string> = {
+  free: "Mulai gratis",
+  pro: "Pilih Pro",
+  business: "Hubungi kami",
+};
+
+async function fetchPlans(): Promise<PlanCard[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/plans`, { cache: "no-store" });
+    if (!res.ok) return FALLBACK_PLANS;
+    const data = (await res.json()) as { plans?: PlanCard[] };
+    return data.plans?.length ? data.plans : FALLBACK_PLANS;
+  } catch {
+    return FALLBACK_PLANS;
+  }
+}
 
 const FAQ = [
   {
@@ -86,7 +127,8 @@ const FAQ = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const plans = await fetchPlans();
   return (
     <div className="bg-white">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur">
@@ -240,20 +282,20 @@ export default function LandingPage() {
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Harga sederhana, tanpa kejutan</h2>
             <p className="mt-3 text-slate-600">Mulai gratis, upgrade saat trafik pesan Anda bertambah.</p>
           </div>
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {PLANS.map((plan) => (
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {plans.map((plan) => (
               <div
-                key={plan.name}
+                key={plan.id}
                 className={`card card-pad relative ${
-                  plan.highlight ? "border-brand-500 ring-2 ring-brand-500/20" : ""
+                  plan.highlighted ? "border-brand-500 ring-2 ring-brand-500/20" : ""
                 }`}
               >
-                {plan.highlight && (
+                {plan.highlighted && (
                   <span className="absolute -top-3 left-5 badge bg-brand-600 text-white">Paling populer</span>
                 )}
                 <h3 className="font-semibold text-slate-900">{plan.name}</h3>
                 <p className="mt-3">
-                  <span className="text-3xl font-bold text-slate-900">{plan.price}</span>
+                  <span className="text-3xl font-bold text-slate-900">{plan.priceLabel}</span>
                   <span className="text-sm text-slate-500">{plan.period}</span>
                 </p>
                 <ul className="mt-6 space-y-3 text-sm text-slate-600">
@@ -272,9 +314,9 @@ export default function LandingPage() {
                 </ul>
                 <Link
                   href="/register"
-                  className={`mt-7 w-full ${plan.highlight ? "btn-primary" : "btn-secondary"}`}
+                  className={`mt-7 w-full ${plan.highlighted ? "btn-primary" : "btn-secondary"}`}
                 >
-                  {plan.cta}
+                  {PLAN_CTA[plan.id] ?? "Mulai"}
                 </Link>
               </div>
             ))}

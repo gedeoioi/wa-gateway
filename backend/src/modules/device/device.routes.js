@@ -5,6 +5,7 @@ import { prisma } from "../../db/prisma.js";
 import { asyncHandler, badRequest, notFound, conflict } from "../../lib/security.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { waManager } from "../../whatsapp/manager.js";
+import { effectiveDeviceLimit, getPlan } from "../../config/plans.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -42,7 +43,21 @@ router.post(
     if (!parsed.success) throw badRequest("Data tidak valid", parsed.error.flatten().fieldErrors);
 
     const count = await prisma.device.count({ where: { userId: req.user.id } });
-    if (count >= 5) throw conflict("Maksimal 5 device per akun");
+
+    // Allowance comes from the plan, optionally overridden per user by an admin.
+    // requireAuth only selects a subset of fields, so read the override fresh.
+    const account = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { plan: true, deviceLimitOverride: true },
+    });
+    const limit = effectiveDeviceLimit(account ?? {});
+    if (count >= limit) {
+      const planName = getPlan(account?.plan).name;
+      throw conflict(
+        `Batas device untuk paket ${planName} adalah ${limit}. ` +
+          `Hapus device lain atau upgrade paket untuk menambah.`,
+      );
+    }
 
     const device = await prisma.device.create({
       data: {

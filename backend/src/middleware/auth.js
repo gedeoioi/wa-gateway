@@ -25,7 +25,19 @@ export async function requireAuth(req, _res, next) {
     const payload = verifyToken(token);
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, name: true, role: true, plan: true, isActive: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        plan: true,
+        isActive: true,
+        usedThisMonth: true,
+        monthlyQuota: true,
+        // Needed by effectiveDeviceLimit(); without it an admin override
+        // would be silently ignored on routes that rely on req.user.
+        deviceLimitOverride: true,
+      },
     });
     if (!user) throw unauthorized("User tidak ditemukan");
     if (!user.isActive) throw forbidden("Akun dinonaktifkan");
@@ -92,6 +104,20 @@ export const scope = (name) => (req, _res, next) => {
   req.requiredScope = name;
   next();
 };
+
+/* --------------------------------- admin ---------------------------------- */
+
+/**
+ * Role gate. This is the single place in the codebase that trusts `User.role`;
+ * every other route scopes data by ownership (userId) instead.
+ * Must run AFTER requireAuth so req.user is populated from the database
+ * (not from the JWT payload, which can be stale after a role change).
+ */
+export function requireAdmin(req, _res, next) {
+  if (!req.user) return next(unauthorized("Token tidak ditemukan"));
+  if (req.user.role !== "admin") return next(forbidden("Akses khusus admin"));
+  next();
+}
 
 /* ------------------------------- rate limits ------------------------------ */
 

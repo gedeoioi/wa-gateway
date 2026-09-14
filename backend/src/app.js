@@ -7,12 +7,14 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { errorHandler, notFoundHandler, apiLimiter } from "./middleware/auth.js";
 import { openApiDocument } from "./lib/openapi.js";
+import { publicPlanCatalog, GLOBAL_MAX_DEVICES } from "./config/plans.js";
 
 import authRoutes from "./modules/auth/auth.routes.js";
 import deviceRoutes from "./modules/device/device.routes.js";
 import messageRoutes from "./modules/message/message.routes.js";
 import broadcastRoutes from "./modules/broadcast/broadcast.routes.js";
 import apiKeyRoutes from "./modules/apikey/apikey.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 import { publicApiHandlers } from "./routes/public-api.routes.js";
 
 export function createApp() {
@@ -56,12 +58,18 @@ export function createApp() {
     }),
   );
 
+  app.get(
+    "/api/plans",
+    (_req, res) => res.json({ plans: publicPlanCatalog(), globalMaxDevices: GLOBAL_MAX_DEVICES }),
+  );
+
   // Dashboard API (JWT)
   app.use("/api/auth", authRoutes);
   app.use("/api/devices", deviceRoutes);
   app.use("/api/messages", messageRoutes);
   app.use("/api/broadcasts", broadcastRoutes);
   app.use("/api/keys", apiKeyRoutes);
+  app.use("/api/admin", adminRoutes);
 
   // Public API (API key) - same paths as in the docs.
   // Mounted per-route so unmatched /api/* falls through to a real 404 instead

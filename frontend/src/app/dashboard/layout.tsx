@@ -18,6 +18,14 @@ const NAV = [
   { href: "/dashboard/settings", label: "Pengaturan", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
 ];
 
+// Only rendered when the account has role=admin. The backend enforces this
+// independently, so hiding the link is purely a UI affordance.
+const ADMIN_NAV = {
+  href: "/dashboard/admin",
+  label: "Admin Panel",
+  icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+};
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -46,6 +54,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const quotaPct = user.monthlyQuota
     ? Math.min(100, Math.round((user.usedThisMonth / user.monthlyQuota) * 100))
     : 0;
+
+  const isAdmin = user.role === "admin";
 
   function handleLogout() {
     disconnectSocket();
@@ -90,6 +100,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+
+          {isAdmin && (
+            <Link
+              href={ADMIN_NAV.href}
+              className={`mt-2 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
+                pathname === ADMIN_NAV.href
+                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                  : "border-amber-200 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 shrink-0" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={ADMIN_NAV.icon} />
+              </svg>
+              {ADMIN_NAV.label}
+            </Link>
+          )}
         </nav>
 
         <div className="mx-3 mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -140,6 +166,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* flex-1 on mobile keeps the right cluster pinned to the edge */}
           <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+            {isAdmin && (
+              <span className="badge hidden bg-amber-50 text-amber-700 xs:inline-flex">admin</span>
+            )}
             <span className="badge hidden bg-brand-50 capitalize text-brand-700 xs:inline-flex sm:inline-flex">
               {user.plan}
             </span>

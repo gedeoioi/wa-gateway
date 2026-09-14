@@ -118,8 +118,24 @@ export default function SettingsPage() {
           <div className="card card-pad">
             <h2 className="font-semibold text-slate-900">Paket &amp; kuota</h2>
             <p className="mt-3">
-              <span className="badge bg-brand-50 capitalize text-brand-700">{user.plan}</span>
+              <span className="badge bg-brand-50 text-brand-700">
+                {user.planName ?? user.plan}
+              </span>
             </p>
+            <dl className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Batas device</dt>
+                <dd className="font-medium text-slate-900">
+                  {user.deviceLimit !== undefined ? `${user.deviceLimit} device` : "—"}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Kuota pesan</dt>
+                <dd className="font-medium text-slate-900">
+                  {user.monthlyQuota.toLocaleString("id-ID")} / bulan
+                </dd>
+              </div>
+            </dl>
             <div className="mt-4">
               <div className="flex justify-between text-sm text-slate-600">
                 <span>Pemakaian bulan ini</span>
@@ -138,6 +154,10 @@ export default function SettingsPage() {
             </div>
             <p className="mt-4 text-xs text-slate-500">
               Kuota direset otomatis setiap 30 hari sejak tanggal reset terakhir.
+            </p>
+            <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
+              Ingin menambah kuota atau device? Hubungi admin untuk upgrade paket. Perubahan paket
+              dilakukan manual setelah pembayaran dikonfirmasi.
             </p>
           </div>
 

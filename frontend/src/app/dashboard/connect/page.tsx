@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { useDeviceStatus } from "@/lib/socket";
 import { StatusBadge } from "@/components/StatusBadge";
 import { toastError, toastSuccess } from "@/components/Toast";
 import type { Device } from "@/lib/types";
 
 export default function ConnectPage() {
+  const { user } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
   const [selected, setSelected] = useState<Device | null>(null);
   const [qr, setQr] = useState<string | null>(null);
@@ -148,10 +150,22 @@ export default function ConnectPage() {
             Scan QR code dengan WhatsApp di ponsel Anda: Perangkat tertaut → Tautkan perangkat.
           </p>
         </div>
-        <button onClick={addDevice} className="btn-primary" disabled={busy || devices.length >= 5}>
+        <button
+          onClick={addDevice}
+          className="btn-primary"
+          disabled={busy || (user?.deviceLimit !== undefined && devices.length >= user.deviceLimit)}
+        >
           + Tambah device
         </button>
       </div>
+
+      {user?.deviceLimit !== undefined && (
+        <p className="rounded-lg bg-slate-100 px-3.5 py-2.5 text-sm text-slate-600">
+          Menggunakan {devices.length} dari {user.deviceLimit} device
+          {user.planName ? ` (paket ${user.planName})` : ""}.
+          {devices.length >= user.deviceLimit && " Upgrade paket untuk menambah device."}
+        </p>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="card card-pad lg:col-span-1">

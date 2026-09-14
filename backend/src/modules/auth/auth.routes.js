@@ -10,6 +10,7 @@ import {
   conflict,
 } from "../../lib/security.js";
 import { signToken, requireAuth, authLimiter } from "../../middleware/auth.js";
+import { getPlan, effectiveDeviceLimit, DEFAULT_PLAN } from "../../config/plans.js";
 
 const router = Router();
 
@@ -25,14 +26,17 @@ const loginSchema = z.object({
 });
 
 function publicUser(user) {
+  const plan = getPlan(user.plan);
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     plan: user.plan,
+    planName: plan.name,
     role: user.role,
     usedThisMonth: user.usedThisMonth,
     monthlyQuota: user.monthlyQuota,
+    deviceLimit: effectiveDeviceLimit(user),
     createdAt: user.createdAt,
   };
 }
@@ -53,6 +57,10 @@ router.post(
         email: email.toLowerCase(),
         name: name ?? email.split("@")[0],
         passwordHash: await hashPassword(password),
+        // Set quota explicitly from the plan definition. Relying on the
+        // schema default would decouple quota from the plan catalog.
+        plan: DEFAULT_PLAN,
+        monthlyQuota: getPlan(DEFAULT_PLAN).monthlyQuota,
       },
     });
 
