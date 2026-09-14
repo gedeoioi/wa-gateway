@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DOCS_URL } from "@/lib/api";
+import { Logo, BRAND_NAME } from "@/components/Logo";
 
 const FEATURES = [
   {
@@ -133,17 +134,8 @@ export default async function LandingPage() {
     <div className="bg-white">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-slate-900">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-600 text-white">
-              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth={2}>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.9 9.9 0 01-4.255-.949L3 20l1.395-3.72A7.88 7.88 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-            </span>
-            WA Gateway
+          <Link href="/" aria-label={BRAND_NAME}>
+            <Logo />
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-slate-600 md:flex">
             <a href="#fitur" className="hover:text-slate-900">Fitur</a>

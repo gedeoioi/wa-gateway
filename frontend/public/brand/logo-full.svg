@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" width="240" height="64" role="img" aria-label="WA Gateway">
+  <rect width="64" height="64" rx="14" fill="#059669" />
+  <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 26h.01M32 26h.01M42 26h.01" />
+    <path d="M53 31c0 9.4-9.4 17-21 17a24 24 0 0 1-9.6-1.9L11 51l4.1-9.3A15.7 15.7 0 0 1 11 31c0-9.4 9.4-17 21-17s21 7.6 21 17z" />
+  </g>
+  <text x="80" y="41" font-family="Inter, system-ui, -apple-system, Segoe UI, sans-serif" font-size="24" font-weight="700" fill="#0f172a">WA Gateway</text>
+</svg>

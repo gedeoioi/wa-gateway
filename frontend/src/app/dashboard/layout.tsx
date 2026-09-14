@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { DOCS_URL } from "@/lib/api";
+import { Logo } from "@/components/Logo";
 import { disconnectSocket } from "@/lib/socket";
 import { ToastHost } from "@/components/Toast";
 
@@ -69,17 +70,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-16 items-center gap-2.5 border-b border-slate-100 px-5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">
-            <svg viewBox="0 0 24 24" fill="none" className="h-4.5 w-4.5" stroke="currentColor" strokeWidth={2}>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.9 9.9 0 01-4.255-.949L3 20l1.395-3.72A7.88 7.88 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
-          </span>
-          <span className="font-semibold text-slate-900">WA Gateway</span>
+        <div className="flex h-16 items-center border-b border-slate-100 px-5">
+          <Logo />
         </div>
 
         <nav className="flex flex-col gap-1 p-3">

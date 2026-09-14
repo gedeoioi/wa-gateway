@@ -117,7 +117,7 @@ wa-gateway/
         │   ├── page.tsx                        # landing (paket dari API)
         │   ├── (auth)/login, (auth)/register
         │   └── dashboard/                      # layout + 8 halaman (termasuk admin)
-        ├── components/                         # StatusBadge, ProgressBar, Toast
+        ├── components/                         # StatusBadge, ProgressBar, Toast, Logo
         └── lib/                                # api client, auth context, socket hook
 ```
 
@@ -167,6 +167,28 @@ copy .env.local.example .env.local   # Windows
 npm install
 npm run dev                          # http://localhost:3000
 ```
+
+### 3.3.1 Mengganti Logo & Favicon
+
+Semua logo dirender lewat satu komponen: `frontend/src/components/Logo.tsx`.
+Sebelumnya SVG-nya diduplikasi di 3 file, sehingga rawan tidak sinkron.
+
+**Ganti logo** — timpa file berikut (nama harus sama), tanpa edit kode:
+
+| File | Dipakai di |
+| --- | --- |
+| `frontend/public/brand/logo.svg` | Header landing, sidebar, halaman login |
+| `frontend/public/brand/logo-full.svg` | Logo + tulisan (opsional, `shape="full"`) |
+
+**Ganti favicon** — timpa `frontend/src/app/icon.svg`. Next.js menanganinya otomatis.
+Opsional: `apple-icon.png` (180x180) dan `opengraph-image.png` (1200x630) di folder
+yang sama.
+
+Kalau memakai nama file lain, sesuaikan `ASSETS` di `Logo.tsx`. Detail lengkap ada di
+`frontend/public/brand/README.md`.
+
+> Logo tampil di atas chip hijau, jadi pakai artwork terang atau transparan agar
+> kontras. Untuk logo gelap, ubah kelas `bg-brand-600` pada chip di `Logo.tsx`.
 
 ### 3.4 Worker (opsional)
 

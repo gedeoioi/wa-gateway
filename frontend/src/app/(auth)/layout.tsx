@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { Logo, BRAND_NAME } from "@/components/Logo";
 import Link from "next/link";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -17,17 +18,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="grid min-h-[100dvh] lg:grid-cols-2">
       <div className="flex items-center justify-center px-4 py-10 sm:py-12">
         <div className="w-full max-w-sm">
-          <Link href="/" className="mb-8 flex items-center gap-2.5 font-semibold text-slate-900">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-600 text-white">
-              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="currentColor" strokeWidth={2}>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.9 9.9 0 01-4.255-.949L3 20l1.395-3.72A7.88 7.88 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-            </span>
-            WA Gateway
+          <Link href="/" className="mb-8 inline-block" aria-label={BRAND_NAME}>
+            <Logo />
           </Link>
           {children}
         </div>
