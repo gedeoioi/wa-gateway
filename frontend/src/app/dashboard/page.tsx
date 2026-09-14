@@ -100,7 +100,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="card card-pad lg:col-span-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold text-slate-900">Tren 7 hari terakhir</h2>
             <div className="flex items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
@@ -112,13 +112,13 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-6 flex h-48 items-end gap-3">
+          <div className="mt-6 flex h-40 items-end gap-1 sm:h-48 sm:gap-3">
             {trend.map((day) => {
               const total = day.sent + day.failed;
               const height = Math.max(4, (total / maxTrend) * 100);
               const sentRatio = total ? (day.sent / total) * 100 : 100;
               return (
-                <div key={day.date} className="group flex flex-1 flex-col items-center gap-2">
+                <div key={day.date} className="group flex min-w-0 flex-1 flex-col items-center gap-2">
                   <div className="relative flex w-full flex-1 items-end">
                     <div
                       className="w-full overflow-hidden rounded-t-md bg-slate-100 transition group-hover:opacity-90"

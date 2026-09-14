@@ -51,6 +51,14 @@ Dibangun dengan Node.js + Baileys (backend) dan Next.js + Tailwind (frontend).
 - Multi-device per user (sampai 5 device)
 - Session terisolasi per device di folder `.wa-sessions/<sessionId>`
 
+### Responsive
+- Berfungsi dari layar 320px (iPhone SE) hingga desktop lebar
+- Tabel `Riwayat` dan daftar penerima broadcast berubah menjadi kartu di mobile
+- Sidebar dashboard jadi drawer dengan overlay, header tidak overflow di layar sempit
+- QR code dan tombol aksi menyesuaikan lebar layar
+- Target sentuh minimal 44px dan input 16px agar iOS tidak auto-zoom
+- Breakpoint `xs` (400px) kustom untuk HP kecil, didefinisikan di `tailwind.config.ts`
+
 ---
 
 ## 2. Struktur Project

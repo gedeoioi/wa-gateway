@@ -439,7 +439,23 @@ export default function BroadcastPage() {
               </div>
 
               <div className="mt-5 max-h-72 overflow-y-auto rounded-lg border border-slate-200">
-                <table className="w-full text-sm">
+                {/* Mobile: list rows that fit a phone width */}
+                <ul className="divide-y divide-slate-100 sm:hidden">
+                  {active.recipients.map((row) => (
+                    <li key={row.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs text-slate-700">+{row.phone}</p>
+                        <p className="mt-0.5 break-words text-xs text-slate-500">
+                          {row.error ?? (row.sentAt ? new Date(row.sentAt).toLocaleTimeString("id-ID") : "—")}
+                        </p>
+                      </div>
+                      <StatusBadge status={row.status} />
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Desktop: table with sticky header */}
+                <table className="hidden w-full text-sm sm:table">
                   <thead className="table-head sticky top-0">
                     <tr>
                       <th className="px-3 py-2">Nomor</th>

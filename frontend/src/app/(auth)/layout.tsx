@@ -14,8 +14,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   }, [user, loading, router]);
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center px-4 py-12">
+    <div className="grid min-h-[100dvh] lg:grid-cols-2">
+      <div className="flex items-center justify-center px-4 py-10 sm:py-12">
         <div className="w-full max-w-sm">
           <Link href="/" className="mb-8 flex items-center gap-2.5 font-semibold text-slate-900">
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-600 text-white">

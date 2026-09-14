@@ -110,37 +110,40 @@ export default function LandingPage() {
             <a href="#faq" className="hover:text-slate-900">FAQ</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/login" className="btn-ghost">Masuk</Link>
-            <Link href="/register" className="btn-primary">Daftar gratis</Link>
+            <Link href="/login" className="btn-ghost hidden px-3 xs:inline-flex">Masuk</Link>
+            <Link href="/register" className="btn-primary px-3 text-xs xs:text-sm sm:px-4">
+              Daftar
+              <span className="hidden xs:inline">&nbsp;gratis</span>
+            </Link>
           </div>
         </div>
       </header>
 
       <section className="relative overflow-hidden">
         <div className="absolute inset-x-0 -top-32 h-72 bg-gradient-to-b from-brand-100/70 to-transparent" />
-        <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-20 lg:grid-cols-2 lg:items-center lg:py-28">
-          <div className="animate-fade-in">
+        <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-14 sm:py-20 lg:grid-cols-2 lg:items-center lg:py-28">
+          <div className="mx-auto animate-fade-in">
             <span className="badge bg-brand-50 text-brand-700">Ringan · Mudah · Cepat</span>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl">
+            <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               WhatsApp Gateway untuk <span className="text-brand-600">chat &amp; broadcast</span> otomatis
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-600">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
               Hubungkan nomor WhatsApp Anda dengan scan QR, kirim pesan satu-satu atau massal, dan
               integrasikan lewat REST API. Semua dalam satu dashboard sederhana.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link href="/register" className="btn-primary px-6 py-3">Mulai gratis sekarang</Link>
               <Link href="/login" className="btn-secondary px-6 py-3">Saya sudah punya akun</Link>
             </div>
-            <dl className="mt-10 grid max-w-md grid-cols-3 gap-6">
+            <dl className="mt-10 grid max-w-md grid-cols-3 gap-4 sm:gap-6">
               {[
                 { k: "99.9%", v: "Uptime gateway" },
                 { k: "<50MB", v: "Pemakaian memori" },
                 { k: "5.000", v: "Nomor per broadcast" },
               ].map((item) => (
                 <div key={item.k}>
-                  <dt className="text-2xl font-semibold text-slate-900">{item.k}</dt>
-                  <dd className="text-sm text-slate-500">{item.v}</dd>
+                  <dt className="text-xl font-semibold text-slate-900 sm:text-2xl">{item.k}</dt>
+                  <dd className="text-xs text-slate-500 sm:text-sm">{item.v}</dd>
                 </div>
               ))}
             </dl>
@@ -187,10 +190,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="fitur" className="border-t border-slate-100 bg-slate-50 py-20">
+      <section id="fitur" className="border-t border-slate-100 bg-slate-50 py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Semua yang Anda butuhkan untuk otomasi WhatsApp
             </h2>
             <p className="mt-3 text-slate-600">
@@ -213,10 +216,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="cara-kerja" className="py-20">
+      <section id="cara-kerja" className="py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">Mulai dalam 3 langkah</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Mulai dalam 3 langkah</h2>
             <p className="mt-3 text-slate-600">Tidak perlu instalasi rumit. Kurang dari 5 menit untuk pesan pertama.</p>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
@@ -231,10 +234,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="harga" className="border-y border-slate-100 bg-slate-50 py-20">
+      <section id="harga" className="border-y border-slate-100 bg-slate-50 py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">Harga sederhana, tanpa kejutan</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Harga sederhana, tanpa kejutan</h2>
             <p className="mt-3 text-slate-600">Mulai gratis, upgrade saat trafik pesan Anda bertambah.</p>
           </div>
           <div className="mt-12 grid gap-6 lg:grid-cols-3">
@@ -279,9 +282,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="faq" className="py-20">
+      <section id="faq" className="py-14 sm:py-20">
         <div className="mx-auto max-w-3xl px-4">
-          <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900">Pertanyaan yang sering diajukan</h2>
+          <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Pertanyaan yang sering diajukan</h2>
           <div className="mt-10 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
             {FAQ.map((item) => (
               <details key={item.q} className="group px-5 py-4">
@@ -305,8 +308,8 @@ export default function LandingPage() {
       </section>
 
       <section className="px-4 pb-20">
-        <div className="mx-auto max-w-6xl rounded-2xl bg-brand-600 px-6 py-14 text-center sm:px-12">
-          <h2 className="text-3xl font-bold tracking-tight text-white">Siap otomasi WhatsApp Anda?</h2>
+        <div className="mx-auto max-w-6xl rounded-2xl bg-brand-600 px-5 py-12 text-center sm:px-12 sm:py-14">
+          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Siap otomasi WhatsApp Anda?</h2>
           <p className="mx-auto mt-3 max-w-xl text-brand-50">
             Daftar sekarang, hubungkan nomor Anda, dan kirim pesan pertama dalam hitungan menit.
           </p>

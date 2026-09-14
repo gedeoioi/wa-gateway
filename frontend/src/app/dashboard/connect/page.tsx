@@ -217,7 +217,7 @@ export default function ConnectPage() {
                   <p className="mt-1 text-sm text-brand-700">
                     Anda siap mengirim pesan dari {selected.name}.
                   </p>
-                  <div className="mt-6 flex gap-2">
+                  <div className="mt-6 flex w-full max-w-[280px] flex-col gap-2 sm:max-w-none sm:flex-row">
                     <button onClick={() => reconnect(selected)} className="btn-secondary" disabled={busy}>
                       Reconnect
                     </button>
@@ -263,7 +263,7 @@ export default function ConnectPage() {
                       {selected.lastError}
                     </p>
                   )}
-                  <div className="mt-6 flex gap-2">
+                  <div className="mt-6 flex w-full max-w-[280px] flex-col gap-2 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
                     <button onClick={() => fetchQr(selected.id)} className="btn-secondary">
                       Refresh QR
                     </button>
