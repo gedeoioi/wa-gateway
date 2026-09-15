@@ -89,7 +89,7 @@ export const env = {
   nodeEnv,
   isProd,
   port: num(process.env.PORT, 4000),
-  frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:3100",
   publicBaseUrl: process.env.PUBLIC_BASE_URL || `http://localhost:${num(process.env.PORT, 4000)}`,
 
   // Fallbacks are kept so local development works without a .env file, but

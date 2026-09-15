@@ -103,7 +103,7 @@ services:
     depends_on:
       - api
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3100}:3000"
 
 volumes:
   pgdata:
