@@ -87,6 +87,11 @@ sudo chmod 750 /var/lib/wa-gateway
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 ```
+atau
+```bash
+cd /opt/wa-gateway
+docker compose -f docker-compose.prod.yml --env-file .env.production exec api npx prisma db push
+```
 
 Cek status dan log:
 
@@ -208,6 +213,42 @@ docker compose -f docker-compose.prod.yml exec api npx prisma db push
 ```
 
 Karena `/var/lib/wa-gateway` adalah volume terpisah, sesi WhatsApp **tidak** hilang.
+
+### Setelah mengubah kode frontend
+
+Frontend **wajib di-rebuild tanpa cache**, karena `NEXT_PUBLIC_*` di-inline saat
+build. `up -d` saja tidak cukup bila image lama sudah ada:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production build --no-cache frontend
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d frontend
+docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail=50 frontend
+```
+
+Pastikan tidak ada `Error:` di log. Verifikasi:
+
+```bash
+curl -I http://127.0.0.1:3100        # harus 200, bukan 500
+```
+
+### Selalu jalankan pemeriksaan sebelum deploy
+
+```bash
+cd frontend
+npm run check     # boundary check + eslint + build
+```
+
+Beberapa error Next.js **tidak** muncul saat `next build` dan hanya tampil sebagai
+**HTTP 500 saat runtime**. `scripts/check-server-components.mjs` menangkap kelas bug
+tersebut secara statis — mis. event handler (`onError`, `onClick`) di Server Component,
+yang pernah menyebabkan landing page 500 di produksi meski build sukses.
+
+Untuk uji penuh sebelum naik ke VPS:
+
+```bash
+npm run verify    # build lalu jalankan mode produksi lokal, uji halaman utama
+```
+
 
 ---
 

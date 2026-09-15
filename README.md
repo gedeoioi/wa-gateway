@@ -165,8 +165,22 @@ Isi `JWT_SECRET` dan `API_KEY_ENCRYPTION_SECRET` dengan hasilnya.
 cd frontend
 copy .env.local.example .env.local   # Windows
 npm install
-npm run dev                          # http://localhost:3000
+npm run dev                          # http://localhost:3100
 ```
+
+**Sebelum build/deploy, jalankan pipeline pemeriksaan:**
+
+```bash
+npm run check        # boundary check + eslint + build
+npm run verify       # build + jalankan mode PRODUKSI lokal di port 3100
+```
+
+> **Penting**: selalu uji dengan `npm run verify`, bukan hanya `npm run dev`.
+> Next.js tidak menangkap sebagian error (mis. event handler di Server Component)
+> saat `next build` maupun di dev mode — error itu baru muncul sebagai **500 saat
+> halaman dirender di produksi**. `scripts/check-server-components.mjs` menangkap
+> kelas bug tersebut secara statis.
+
 
 ### 3.3.1 Mengganti Logo & Favicon
 

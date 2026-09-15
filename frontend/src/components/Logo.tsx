@@ -8,8 +8,12 @@ import Image from "next/image";
  *   public/brand/logo.svg       icon only (square, ~1:1)
  *   public/brand/logo-full.svg  icon + wordmark
  *
- * While those files are absent the built-in WhatsApp glyph renders instead, so
- * the header never shows a broken image.
+ * IMPORTANT: this must stay a Server Component. It renders inside the landing
+ * page, which is server-rendered. Passing an event handler (e.g. `onError`) to a
+ * DOM element here throws "Event handlers cannot be passed to Client Component
+ * props" at runtime — and `next build` does NOT catch it, so it only surfaces as
+ * a 500 on the deployed page. Both SVG files above are committed to the repo, so
+ * no runtime fallback is needed.
  */
 
 export const BRAND_NAME = "WA Gateway";
@@ -29,8 +33,8 @@ interface LogoProps {
   nameClassName?: string;
 }
 
-/** Built-in fallback: a WhatsApp-style speech bubble. */
-function FallbackGlyph({ className }: { className?: string }) {
+/** Built-in glyph, for places that need a bare mark without a network request. */
+function BrandGlyph({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -71,23 +75,13 @@ export function Logo({
             className="h-9 w-9 object-contain"
           />
         ) : (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={ASSETS.square}
-              alt=""
-              className={`${className} object-contain`}
-              // If the file is missing, hide the broken image and reveal the glyph
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                const fallback = e.currentTarget.nextElementSibling;
-                if (fallback instanceof HTMLElement) fallback.style.display = "block";
-              }}
-            />
-            <span className="hidden">
-              <FallbackGlyph className={className} />
-            </span>
-          </>
+          <Image
+            src={ASSETS.square}
+            alt=""
+            width={20}
+            height={20}
+            className={`${className} object-contain`}
+          />
         )}
       </span>
 
@@ -98,5 +92,5 @@ export function Logo({
 
 /** Bare glyph without the brand chip, for empty states and large marks. */
 export function LogoGlyph({ className = "h-5 w-5" }: { className?: string }) {
-  return <FallbackGlyph className={className} />;
+  return <BrandGlyph className={className} />;
 }

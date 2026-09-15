@@ -6,7 +6,10 @@
     "dev": "next dev -p 3100",
     "build": "next build",
     "start": "next start -p 3100",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:boundary": "node scripts/check-server-components.mjs",
+    "check": "npm run check:boundary && npm run lint && npm run build",
+    "verify": "npm run build && node scripts/check-server-components.mjs && npm start"
   },
   "dependencies": {
     "next": "14.2.23",
@@ -19,6 +22,8 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.23",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2"
