@@ -225,27 +225,43 @@ docker compose -f docker-compose.prod.yml --env-file .env.production logs -f api
 
 ### `worker unhealthy` padahal tidak crash
 
-Worker tidak menjalankan HTTP server. Image lama mewarisi healthcheck HTTP dari
-`backend/Dockerfile`, sehingga selalu melaporkan `unhealthy` meski worker bekerja
-normal. Cara memastikan:
+Worker tidak menjalankan HTTP server, sehingga healthcheck HTTP biasa tidak bisa
+dipakai. Dua kesalahan sempat terjadi di sini:
+
+1. Worker mewarisi healthcheck HTTP `/health` dari `backend/Dockerfile` → selalu gagal.
+2. Penggantinya memakai `pgrep`, padahal **`pgrep` tidak ada** di `node:bookworm-slim`
+   (paket `procps` tidak terinstal) → juga selalu gagal.
+
+Keduanya tidak terlihat di `docker ps`: container `running` dengan `restarts=0`.
+
+Solusinya: worker menulis **heartbeat** ke file, dan healthcheck membacanya
+(`backend/src/queue/heartbeat.js` + `healthcheck.js`). Ini juga mendeteksi worker
+yang hidup tapi event loop-nya macet — sesuatu yang `pgrep` tidak bisa.
+
+Periksa status sebenarnya:
 
 ```bash
-# restarts=0 berarti tidak pernah crash -> sehat
-docker inspect --format '{{.RestartCount}}' $(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q worker)
+CID=$(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q worker)
 
-# healthcheck yang benar harus memuat pgrep, bukan /health
-docker inspect --format '{{json .Config.Healthcheck}}' $(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q worker)
+# restarts=0 -> tidak pernah crash
+docker inspect --format '{{.RestartCount}}' "$CID"
+
+# Healthcheck harus memuat healthcheck.js, bukan /health atau pgrep
+docker inspect --format '{{json .Config.Healthcheck}}' "$CID"
+
+# Heartbeat diperbarui setiap 30 detik
+docker compose -f docker-compose.prod.yml --env-file .env.production exec worker \
+  node -e "const s=require('fs').statSync('/data/wa-worker-heartbeat');console.log('umur detik:', (Date.now()-s.mtimeMs)/1000)"
 ```
 
-Perbaikan permanen:
+Perbaikan permanen (rebuild, bukan sekadar recreate — kode healthcheck ada di image):
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --force-recreate worker
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build --force-recreate worker
 ```
 
-`deploy.sh` sudah menangani ini otomatis — healthcheck didefinisikan di
-`docker-compose.prod.yml`, dan container yang sudah ada hanya memakai definisi baru
-setelah di-recreate.
+`deploy.sh` menangani ini otomatis dan **tidak pernah gagal hanya karena worker
+unhealthy** — broadcast tetap berjalan inline di proses API.
 
 ### `301` pada pemeriksaan HTTPS
 

@@ -299,22 +299,31 @@ if (( ! api_ok )); then
 fi
 ok "API sehat di port $API_PORT"
 
-# The worker has no HTTP endpoint, so verify it by process + absence of errors.
+# The worker runs no HTTP server, so verify it via its own heartbeat check.
+# An unhealthy worker is not fatal: broadcasts still run inline in the API.
 worker_state="$(service_health worker)"
 if [[ "$worker_state" == "missing" ]]; then
   warn "worker tidak berjalan — broadcast akan dijalankan inline di proses API"
 elif [[ "$worker_state" == "unhealthy" ]]; then
-  # Distinguish a stale HTTP healthcheck (harmless) from a real crash loop.
   worker_cid="$(compose ps -q worker 2>/dev/null || true)"
   worker_hc="$(docker inspect --format '{{json .Config.Healthcheck}}' "$worker_cid" 2>/dev/null || echo '')"
   worker_restarts="$(docker inspect --format '{{.RestartCount}}' "$worker_cid" 2>/dev/null || echo '?')"
-  if [[ "$worker_hc" == *"/health"* ]]; then
-    warn "worker unhealthy karena healthcheck HTTP warisan image lama (bukan kerusakan)"
-    compose up -d --force-recreate worker >/dev/null 2>&1 || true
-    ok "worker di-recreate dengan healthcheck yang benar"
+
+  if [[ "$worker_hc" == *"/health"* && "$worker_hc" != *"healthcheck.js"* ]]; then
+    # Old image: inherited the API's HTTP healthcheck, which can never pass
+    warn "worker unhealthy karena healthcheck HTTP warisan image lama"
+    compose up -d --build --force-recreate worker >/dev/null 2>&1 || true
+    ok "worker di-rebuild dengan healthcheck yang benar"
+  elif [[ "$worker_hc" == *pgrep* ]]; then
+    # pgrep does not exist in node:bookworm-slim
+    warn "worker unhealthy karena healthcheck pgrep (tidak tersedia di image)"
+    compose up -d --build --force-recreate worker >/dev/null 2>&1 || true
+    ok "worker di-rebuild dengan healthcheck heartbeat"
   else
+    # Heartbeat is genuine: the worker really did stop updating it
     compose logs --tail=40 worker || true
-    die "worker tidak sehat (restarts=$worker_restarts). Lihat log di atas."
+    warn "worker tidak sehat (restarts=$worker_restarts) — broadcast akan jalan inline"
+    warn "Lihat log di atas; API tetap melayani."
   fi
 else
   ok "worker sehat"

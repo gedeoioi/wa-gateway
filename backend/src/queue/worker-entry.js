@@ -7,6 +7,7 @@ import { connectDatabase, disconnectDatabase } from "../db/prisma.js";
 import { startBroadcastWorker, stopBroadcastWorker } from "./broadcast.worker.js";
 import { closeQueue } from "./queue.js";
 import { logger } from "../config/logger.js";
+import { startHeartbeat, stopHeartbeat } from "./heartbeat.js";
 
 async function main() {
   await connectDatabase();
@@ -17,8 +18,14 @@ async function main() {
     process.exit(1);
   }
 
+  // Drives the container healthcheck (see src/queue/healthcheck.js). Started
+  // only after the worker is up, so a stalled worker stops updating it.
+  startHeartbeat();
+  logger.info("worker heartbeat started");
+
   const shutdown = async (signal) => {
     logger.info({ signal }, "worker shutting down");
+    stopHeartbeat();
     await stopBroadcastWorker();
     await closeQueue();
     await disconnectDatabase();

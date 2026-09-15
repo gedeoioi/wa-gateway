@@ -118,16 +118,25 @@ for name in api frontend worker postgres redis; do
     fail "$name status=$state (restarts=$restarting)"
   elif [[ "$health" == "unhealthy" ]]; then
     if [[ "$name" == "worker" ]]; then
-      # The worker runs no HTTP server. An outdated image inherits the API's
-      # HTTP healthcheck, which always fails even though the worker is fine.
+      # The worker ships its own heartbeat-based check. Distinguish the three
+      # causes that look identical in `docker ps`.
       hc="$(docker inspect --format '{{json .Config.Healthcheck}}' "$cid" 2>/dev/null || echo '')"
-      if [[ "$hc" == *"/health"* ]]; then
+      if [[ "$hc" == *"/health"* && "$hc" != *"healthcheck.js"* ]]; then
         fail "$name healthcheck masih memakai HTTP /health (warisan image lama, bukan kerusakan)"
         info "Perbaiki: docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --force-recreate worker"
         WORKER_HC_STALE=1
+      elif [[ "$hc" == *pgrep* ]]; then
+        fail "$name healthcheck memakai pgrep, yang TIDAK ADA di node:bookworm-slim"
+        info "Perbaiki: git pull, lalu docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --build --force-recreate worker"
+        WORKER_HC_STALE=1
       else
-        fail "$name running tapi UNHEALTHY (restarts=$restarting)"
-        info "Cek: docker compose -f $COMPOSE_FILE --env-file $ENV_FILE logs --tail=40 worker"
+        # Real problem: heartbeat stopped. Check whether it ever started.
+        if compose logs --tail=200 worker 2>/dev/null | grep -q "worker heartbeat started"; then
+          fail "$name unhealthy: heartbeat berhenti (worker macet atau crash)"
+        else
+          fail "$name unhealthy: worker gagal start (heartbeat tidak pernah jalan)"
+        fi
+        info "Cek: docker compose -f $COMPOSE_FILE --env-file $ENV_FILE logs --tail=60 worker"
       fi
     else
       fail "$name running tapi UNHEALTHY (restarts=$restarting)"
