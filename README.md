@@ -241,17 +241,45 @@ menurunkan atau menonaktifkan akunnya sendiri.
 
 ```bash
 cd backend
-npm test              # 3 suite, 102 skenario (tanpa perlu PostgreSQL/Redis)
+npm test              # 4 suite, 117 skenario (tanpa perlu PostgreSQL/Redis)
 ```
 
 Test memakai Prisma double in-memory sehingga bisa dijalankan tanpa database:
+- `_config.test.mjs` — validasi secret produksi (menolak boot dengan secret default)
 - `_e2e.mjs` — auth, device, API key + scope, single chat, broadcast, kuota, isolasi data
 - `_worker-quota.test.mjs` — worker broadcast berhenti saat kuota habis
 - `_admin.test.mjs` — otorisasi admin, perubahan paket, batas device, privasi data
 
 ---
 
-## 4. Alur Pakai
+## 4. Deploy ke VPS
+
+Panduan lengkap ada di **[DEPLOY.md](./DEPLOY.md)** (Docker Compose + Nginx + HTTPS),
+termasuk alternatif tanpa Docker memakai PM2.
+
+Ringkasnya:
+
+```bash
+cp .env.production.example .env.production
+# isi JWT_SECRET, API_KEY_ENCRYPTION_SECRET, POSTGRES_PASSWORD, dan domain
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+Poin paling penting:
+
+- **Backend menolak start di produksi** bila `JWT_SECRET`/`API_KEY_ENCRYPTION_SECRET`
+  masih placeholder, atau `FRONTEND_URL` masih `localhost`. Ini mencegah deploy
+  dengan secret default yang ada di source publik (risiko pemalsuan token).
+- **`/var/lib/wa-gateway` adalah volume persisten** untuk sesi WhatsApp dan upload.
+  Tanpa itu, setiap redeploy menghapus pairing dan semua user harus scan QR ulang.
+- **Nginx wajib meneruskan header `Upgrade`** ke port 4000, kalau tidak status
+  realtime (Socket.IO) mati.
+- Redis sebaiknya aktif di produksi; tanpa Redis, broadcast hilang bila server restart.
+
+
+---
+
+## 5. Alur Pakai
 
 1. Buka `http://localhost:3000` → **Daftar gratis**
 2. Menu **Koneksi Device** → **Tambah device** → scan QR dari WhatsApp
@@ -262,7 +290,7 @@ Test memakai Prisma double in-memory sehingga bisa dijalankan tanpa database:
 
 ---
 
-## 5. Contoh Integrasi API
+## 6. Contoh Integrasi API
 
 ### Kirim pesan tunggal
 
@@ -361,7 +389,7 @@ curl -X POST http://localhost:4000/api/send-message \
 
 ---
 
-## 6. Keamanan
+## 7. Keamanan
 
 | Aspek | Implementasi |
 | --- | --- |
@@ -375,7 +403,7 @@ curl -X POST http://localhost:4000/api/send-message \
 
 ---
 
-## 7. Catatan Operasional
+## 8. Catatan Operasional
 
 - **Session WhatsApp** tersimpan di `backend/.wa-sessions/<sessionId>`. Jangan pernah
   commit folder ini dan backup bila ingin survive tanpa scan ulang.

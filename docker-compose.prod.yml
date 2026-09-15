@@ -1,0 +1,110 @@
+# Stack PRODUKSI: PostgreSQL + Redis + API + Worker + Frontend
+#
+# Pakai file ini untuk deploy ke VPS:
+#   cp .env.production.example .env.production
+#   # isi secret & domain, lalu:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Untuk development lokal, pakai docker-compose.yml (hanya database & redis).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi}
+      POSTGRES_DB: ${POSTGRES_DB:-wa_gateway}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Tidak diekspos ke internet; hanya diakses antar-container
+    expose:
+      - "5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "6379"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-wa_gateway}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET wajib diisi}
+      API_KEY_ENCRYPTION_SECRET: ${API_KEY_ENCRYPTION_SECRET:?API_KEY_ENCRYPTION_SECRET wajib diisi}
+      FRONTEND_URL: ${PUBLIC_FRONTEND_URL:?PUBLIC_FRONTEND_URL wajib diisi}
+      PUBLIC_BASE_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL wajib diisi}
+      WA_SESSION_DIR: /data/wa-sessions
+      UPLOAD_DIR: /data/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-16}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
+    volumes:
+      # Persistent: tanpa ini, setiap redeploy menghapus sesi WhatsApp
+      - /var/lib/wa-gateway:/data
+    ports:
+      - "${API_PORT:-4000}:4000"
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["node", "src/queue/worker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-wa_gateway}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      API_KEY_ENCRYPTION_SECRET: ${API_KEY_ENCRYPTION_SECRET}
+      FRONTEND_URL: ${PUBLIC_FRONTEND_URL}
+      WA_SESSION_DIR: /data/wa-sessions
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - /var/lib/wa-gateway:/data
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Di-inline saat build, jadi harus URL publik tempat browser mengakses API
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL wajib diisi}
+        NEXT_PUBLIC_SOCKET_URL: ${PUBLIC_API_URL}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  pgdata:
+  redisdata:

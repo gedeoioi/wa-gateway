@@ -4,6 +4,8 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   swcMinify: true,
+  // Emits a self-contained server bundle for a small production image
+  output: "standalone",
   images: {
     remotePatterns: [{ protocol: "http", hostname: "localhost" }],
     // Required so the brand logo can be served through next/image as SVG.

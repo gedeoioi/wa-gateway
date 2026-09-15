@@ -9,9 +9,8 @@ import { startBroadcastWorker, stopBroadcastWorker } from "./queue/broadcast.wor
 import { closeQueue } from "./queue/queue.js";
 
 async function main() {
-  if (env.isProd && env.jwtSecret.startsWith("change-me")) {
-    logger.warn("JWT_SECRET is still the default value - set a strong secret before going live");
-  }
+  // Insecure production config is rejected at import time by
+  // assertProductionSecrets() in config/env.js, so no runtime warning is needed.
 
   await connectDatabase();
 

@@ -1,0 +1,14 @@
+node_modules
+.env
+.env.*
+!.env.example
+.wa-sessions
+uploads
+dist
+*.log
+.git
+.gitignore
+README.md
+_e2e.mjs
+_admin.test.mjs
+_worker-quota.test.mjs
