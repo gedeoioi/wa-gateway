@@ -44,6 +44,8 @@ VOLUME ["/data"]
 
 EXPOSE 4000
 
+# Default healthcheck for the API (see docker-compose.prod.yml, where the worker
+# overrides this with a process check because it runs no HTTP server).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 

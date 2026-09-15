@@ -295,7 +295,7 @@ Poin paling penting:
 
 ## 5. Alur Pakai
 
-1. Buka `http://localhost:3000` → **Daftar gratis**
+1. Buka `http://localhost:3100` → **Daftar gratis**
 2. Menu **Koneksi Device** → **Tambah device** → scan QR dari WhatsApp
    (WhatsApp → Perangkat tertaut → Tautkan perangkat)
 3. **Single Chat** untuk kirim ke satu nomor, atau **Broadcast** untuk massal

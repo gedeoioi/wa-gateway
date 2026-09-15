@@ -1,137 +1,104 @@
 # Deploy ke VPS
 
-Panduan ini untuk VPS **Ubuntu/Debian** dengan domain. Total waktu ± 20 menit.
+WA Gateway memakai **frontend port 3100** (bukan 3000, karena di VPS ini 3000 sudah
+dipakai aplikasi lain) dan **API port 4000**.
 
-> **Penting:** backend akan **menolak start** bila `NODE_ENV=production` tetapi
-> `JWT_SECRET` / `API_KEY_ENCRYPTION_SECRET` masih placeholder atau `FRONTEND_URL`
-> masih berisi `localhost`. Ini disengaja: secret default ada di source code publik,
-> jadi siapa pun bisa memalsukan token login bila dibiarkan.
-
----
-
-## 0. Yang perlu disiapkan
-
-- VPS Ubuntu 22.04+ (minimal 2 GB RAM; Baileys menahan koneksi terus-menerus)
-- Domain, mis. `app.domain.com` (frontend) dan `api.domain.com` (backend)
-- Docker + Docker Compose plugin
-
-```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER   # lalu logout & login lagi
-```
+> Semua langkah di bawah sudah diotomatiskan. Jalankan `./deploy.sh` dan skripnya
+> memverifikasi setiap tahap, berhenti pada error pertama, lalu menampilkan log yang
+> relevan. Jalur manual ada di bagian akhir sebagai referensi.
 
 ---
 
-## 1. Ambil kode
+## Ringkas (3 langkah)
 
 ```bash
-sudo mkdir -p /opt/wa-gateway && sudo chown $USER /opt/wa-gateway
 cd /opt/wa-gateway
-# clone repo atau upload lewat rsync/scp
-```
 
----
-
-## 2. Generate secret
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # JWT_SECRET
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"   # API_KEY_ENCRYPTION_SECRET
-```
-
-Keduanya **harus berbeda**. Jangan pakai nilai contoh.
-
----
-
-## 3. Konfigurasi
-
-```bash
+# 1. Siapkan konfigurasi sekali saja
 cp .env.production.example .env.production
 nano .env.production
-```
-
-Isi minimal:
-
-```env
-JWT_SECRET=<hex 64 karakter>
-API_KEY_ENCRYPTION_SECRET=<hex 64 karakter berbeda>
-POSTGRES_PASSWORD=<password kuat>
-PUBLIC_FRONTEND_URL=https://app.domain.com
-PUBLIC_API_URL=https://api.domain.com
-```
-
-Kunci `.env.production` agar tidak terbaca proses lain:
-
-```bash
 chmod 600 .env.production
+
+# 2. Periksa konfigurasi tanpa mengubah apa pun
+./deploy.sh --check
+
+# 3. Jalankan (tambahkan --first-time saat pertama kali, untuk membuat admin)
+./deploy.sh --first-time
+```
+
+Setelah itu, update berikutnya cukup:
+
+```bash
+git pull && ./deploy.sh
+```
+
+Kalau ada masalah:
+
+```bash
+./doctor.sh
 ```
 
 ---
 
-## 4. Direktori persisten (WAJIB)
+## Yang wajib diisi di `.env.production`
 
-Sesi WhatsApp dan lampiran disimpan di luar container. **Tanpa langkah ini, setiap
-redeploy menghapus pairing dan semua user harus scan QR ulang.**
+Skrip `deploy.sh` menolak berjalan bila salah satu belum benar.
 
 ```bash
-sudo mkdir -p /var/lib/wa-gateway/wa-sessions /var/lib/wa-gateway/uploads
-# Container berjalan sebagai user non-root (uid 999)
-sudo chown -R 999:999 /var/lib/wa-gateway
-sudo chmod 750 /var/lib/wa-gateway
+# Generate dua kali — nilainya HARUS berbeda
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+| Variabel | Keterangan |
+| --- | --- |
+| `JWT_SECRET` | hex 64 karakter, acak |
+| `API_KEY_ENCRYPTION_SECRET` | hex 64 karakter, **berbeda** dari di atas |
+| `POSTGRES_PASSWORD` | password database, kuat |
+| `PUBLIC_FRONTEND_URL` | `https://wa.domain-anda.com` — **tidak boleh localhost** |
+| `PUBLIC_API_URL` | `https://api.domain-anda.com` — **tidak boleh localhost** |
+| `FRONTEND_PORT` | `3100` (default) |
+| `API_PORT` | `4000` (default) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | opsional, dipakai `--first-time` |
+
+Backend akan **menolak start** bila secret masih placeholder atau `FRONTEND_URL`
+berisi `localhost`. Ini disengaja: secret default ada di source publik, jadi token
+login bisa dipalsukan bila dibiarkan.
 
 ---
 
-## 5. Jalankan
+## Prasyarat VPS
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-```
-atau
-```bash
-cd /opt/wa-gateway
-docker compose -f docker-compose.prod.yml --env-file .env.production exec api npx prisma db push
+# Docker + Compose plugin
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER    # lalu logout & login lagi
 ```
 
-Cek status dan log:
-
-```bash
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f api
-curl -s localhost:4000/health
-```
+Minimal 2 GB RAM (Baileys menahan koneksi terus-menerus).
 
 ---
 
-## 6. Migrasi database & akun admin
+## Nginx
 
-Jalankan sekali setelah container hidup:
+Nginx **wajib** mengarah ke port host, bukan port container:
 
-```bash
-docker compose -f docker-compose.prod.yml exec api npx prisma db push
+| Layanan | `proxy_pass` | Catatan |
+| --- | --- | --- |
+| Frontend | `http://127.0.0.1:3100` | host 3100 → container 3000 |
+| API | `http://127.0.0.1:4000` | host 4000 → container 4000 |
 
-# Buat admin; tentukan password sendiri agar tidak perlu mencatat output acak
-docker compose -f docker-compose.prod.yml exec \
-  -e ADMIN_EMAIL=admin@domain.com \
-  -e ADMIN_PASSWORD='passwordkuat123' \
-  api node prisma/seed-admin.js
-```
-
----
-
-## 7. Reverse proxy + HTTPS
-
-Backend dan frontend tidak boleh diakses langsung; letakkan di belakang Nginx.
 Contoh `/etc/nginx/sites-available/wa-gateway`:
 
 ```nginx
+# ---------- Frontend ----------
 server {
     listen 80;
-    server_name app.domain.com;
-    client_max_body_size 20m;   # harus >= MAX_UPLOAD_MB
+    listen [::]:80;
+    server_name wa.domain-anda.com;
+    client_max_body_size 20m;          # >= MAX_UPLOAD_MB
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:3100;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -140,18 +107,23 @@ server {
     }
 }
 
+# ---------- API ----------
 server {
     listen 80;
-    server_name api.domain.com;
+    listen [::]:80;
+    server_name api.domain-anda.com;
     client_max_body_size 20m;
 
     location / {
         proxy_pass http://127.0.0.1:4000;
         proxy_http_version 1.1;
-        # Socket.IO butuh upgrade header, kalau tidak, status realtime mati
+
+        # WAJIB untuk Socket.IO — tanpa ini status device tidak realtime
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_read_timeout 3600s;   # koneksi WhatsApp berumur panjang
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -160,22 +132,35 @@ server {
 }
 ```
 
-Aktifkan dan pasang sertifikat:
+Aktifkan lalu terbitkan sertifikat:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/wa-gateway /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default     # hindari blok default menangkap domain
 sudo nginx -t && sudo systemctl reload nginx
+
 sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d app.domain.com -d api.domain.com
+sudo certbot --nginx -d wa.domain-anda.com -d api.domain-anda.com
 ```
 
-**Wajib**: `API_PORT`/`FRONTEND_PORT` sebaiknya hanya di-bind ke localhost. Ubah di
-`docker-compose.prod.yml` menjadi `"127.0.0.1:4000:4000"` agar tidak bisa diakses
-langsung dari internet.
+`nginx -t` harus lolos sebelum reload. Certbot akan mengedit file itu sendiri
+(menambah blok 443 dan redirect 80→443) — itu normal.
+
+Setelah Certbot, jalankan `./doctor.sh` untuk memastikan `proxy_pass` masih benar.
 
 ---
 
-## 8. Firewall
+## Cloudflare (bila domain di-proxy)
+
+Bila `dig +short wa.domain-anda.com` mengembalikan IP Cloudflare (bukan IP VPS):
+
+- SSL/TLS mode **wajib `Full (strict)`**. Mode `Flexible` menyebabkan redirect loop
+  karena Cloudflare mengirim HTTP ke Nginx, lalu Nginx memantulkan ke HTTPS.
+- Pastikan A record `wa` dan `api` menunjuk ke IP VPS Anda.
+
+---
+
+## Firewall
 
 ```bash
 sudo ufw allow OpenSSH
@@ -184,71 +169,119 @@ sudo ufw allow 443
 sudo ufw enable
 ```
 
-Port 4000/3000 tidak perlu dibuka bila Nginx sudah di depan.
+Port 3100/4000 **tidak** perlu dibuka: keduanya hanya di-bind ke `127.0.0.1` dan
+hanya diakses Nginx. Kalau VPS di AWS, buka juga 80/443 di **Security Group**.
 
 ---
 
-## 9. Backup
-
-Yang wajib di-backup: **database** dan **sesi WhatsApp**.
+## Data persisten (WAJIB)
 
 ```bash
-# Database
-docker compose -f docker-compose.prod.yml exec postgres \
+sudo mkdir -p /var/lib/wa-gateway/wa-sessions /var/lib/wa-gateway/uploads
+sudo chown -R 999:999 /var/lib/wa-gateway
+```
+
+`deploy.sh` melakukan ini otomatis. Tanpa direktori ini, **setiap redeploy menghapus
+pairing WhatsApp** dan semua user harus scan QR ulang.
+
+Backup:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production exec -T postgres \
   pg_dump -U postgres wa_gateway | gzip > backup-$(date +%F).sql.gz
 
-# Sesi WhatsApp (agar tidak perlu scan QR ulang setelah restore)
 sudo tar czf wa-sessions-$(date +%F).tar.gz -C /var/lib/wa-gateway wa-sessions
 ```
 
 ---
 
-## 10. Update versi
+## Perintah berguna
 
 ```bash
-cd /opt/wa-gateway
-git pull
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-docker compose -f docker-compose.prod.yml exec api npx prisma db push
+./deploy.sh --check                  # validasi konfigurasi saja
+./deploy.sh --first-time             # deploy pertama + buat admin
+./deploy.sh                          # deploy/update
+./doctor.sh                          # diagnosa menyeluruh
+
+docker compose -f docker-compose.prod.yml --env-file .env.production ps
+docker compose -f docker-compose.prod.yml --env-file .env.production logs -f api
 ```
 
-Karena `/var/lib/wa-gateway` adalah volume terpisah, sesi WhatsApp **tidak** hilang.
+---
 
-### Setelah mengubah kode frontend
+## Troubleshooting
 
-Frontend **wajib di-rebuild tanpa cache**, karena `NEXT_PUBLIC_*` di-inline saat
-build. `up -d` saja tidak cukup bila image lama sudah ada:
+| Gejala | Penyebab | Tindakan |
+| --- | --- | --- |
+| Frontend 500 | kode baru, atau build tanpa `--env-file` | `./deploy.sh` (selalu rebuild frontend tanpa cache) |
+| Frontend 502 | Nginx salah port | jalankan `./doctor.sh`, cek `proxy_pass` harus 3100 |
+| Status device tidak realtime | header `Upgrade` hilang | tambahkan `proxy_set_header Upgrade` di blok API |
+| Backend gagal start | secret placeholder / `FRONTEND_URL` localhost | `./deploy.sh --check` akan menunjukkannya |
+| Sesi WhatsApp hilang | `/var/lib/wa-gateway` tidak persisten | cek bagian "Data persisten" |
+| Redirect loop | Cloudflare mode Flexible | ubah ke `Full (strict)` |
+| Upload gagal | `client_max_body_size` < `MAX_UPLOAD_MB` | naikkan di Nginx |
+
+### Frontend 500 setelah update kode
+
+`NEXT_PUBLIC_*` di-inline saat build, jadi image lama akan mempertahankan URL API
+yang salah. **Wajib rebuild tanpa cache** — sudah ditangani `deploy.sh`:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.production build --no-cache frontend
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d frontend
-docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail=50 frontend
 ```
 
-Pastikan tidak ada `Error:` di log. Verifikasi:
-
-```bash
-curl -I http://127.0.0.1:3100        # harus 200, bukan 500
-```
-
-### Selalu jalankan pemeriksaan sebelum deploy
+Sebelum deploy, jalankan pemeriksaan di lokal:
 
 ```bash
 cd frontend
 npm run check     # boundary check + eslint + build
+npm run verify    # jalankan mode PRODUKSI lokal, uji halaman utama
 ```
 
-Beberapa error Next.js **tidak** muncul saat `next build` dan hanya tampil sebagai
-**HTTP 500 saat runtime**. `scripts/check-server-components.mjs` menangkap kelas bug
-tersebut secara statis — mis. event handler (`onError`, `onClick`) di Server Component,
-yang pernah menyebabkan landing page 500 di produksi meski build sukses.
+`npm run verify` penting: sebagian error Next.js **tidak** muncul saat `next build`
+dan hanya tampil sebagai 500 saat halaman dirender. `scripts/check-server-components.mjs`
+menangkap kelas bug itu secara statis.
 
-Untuk uji penuh sebelum naik ke VPS:
+---
+
+## Jalur manual (referensi)
+
+Bila tidak ingin memakai skrip:
 
 ```bash
-npm run verify    # build lalu jalankan mode produksi lokal, uji halaman utama
+cd /opt/wa-gateway
+
+# Konfigurasi
+cp .env.production.example .env.production
+# isi 5 variabel wajib, lalu:
+chmod 600 .env.production
+docker compose -f docker-compose.prod.yml --env-file .env.production config >/dev/null
+
+# Data persisten
+sudo mkdir -p /var/lib/wa-gateway/wa-sessions /var/lib/wa-gateway/uploads
+sudo chown -R 999:999 /var/lib/wa-gateway
+
+# Build & jalankan (frontend WAJIB tanpa cache)
+docker compose -f docker-compose.prod.yml --env-file .env.production build --no-cache frontend
+docker compose -f docker-compose.prod.yml --env-file .env.production build api worker
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+# Schema + admin
+docker compose -f docker-compose.prod.yml --env-file .env.production exec -T api npx prisma db push --skip-generate
+docker compose -f docker-compose.prod.yml --env-file .env.production exec -T \
+  -e ADMIN_EMAIL=admin@domain.com -e ADMIN_PASSWORD='passwordkuat123' \
+  api node prisma/seed-admin.js
+
+# Verifikasi
+curl -I http://127.0.0.1:4000/health
+curl -I http://127.0.0.1:3100
+curl -I http://127.0.0.1:3100/login
 ```
 
+> Perhatikan: `--env-file` wajib di **setiap** perintah Compose, termasuk `exec`.
+> Tanpa itu, semua variabel kosong dan Compose berhenti dengan
+> `required variable ... is missing a value`.
 
 ---
 
@@ -264,23 +297,15 @@ sudo chown -R $USER /var/lib/wa-gateway /var/log/wa-gateway
 
 npm i -g pm2
 pm2 start ecosystem.config.cjs
-pm2 save && pm2 startup    # ikuti perintah yang dicetak
+pm2 save && pm2 startup
 ```
 
 Set `JWT_SECRET`, `API_KEY_ENCRYPTION_SECRET`, `DATABASE_URL`, `REDIS_URL`, dan
-`FRONTEND_URL` di `backend/.env` (mode `chmod 600`) sebelum menjalankan PM2.
+`FRONTEND_URL` di `backend/.env` (`chmod 600`) sebelum menjalankan PM2. Frontend
+tetap perlu dijalankan terpisah di port 3100:
 
----
-
-## Checklist sebelum go-live
-
-- [ ] `JWT_SECRET` dan `API_KEY_ENCRYPTION_SECRET` di-generate acak dan berbeda
-- [ ] `FRONTEND_URL` dan `PUBLIC_BASE_URL` memakai domain HTTPS, bukan localhost
-- [ ] `.env.production` ber-permission `600` dan tidak ikut ter-commit
-- [ ] `/var/lib/wa-gateway` persisten dan di-backup
-- [ ] Redis jalan (kalau mati, broadcast hilang saat server restart)
-- [ ] Nginx meneruskan header `Upgrade` (kalau tidak, status realtime tidak jalan)
-- [ ] `client_max_body_size` Nginx >= `MAX_UPLOAD_MB`
-- [ ] Akun admin dibuat dengan password kuat
-- [ ] Backup database terjadwal (cron)
-- [ ] Log rotation aktif agar disk tidak penuh
+```bash
+cd /opt/wa-gateway/frontend
+npm ci && npm run build
+PORT=3100 npm start
+```

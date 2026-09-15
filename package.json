@@ -1,0 +1,15 @@
+{
+  "name": "wa-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WhatsApp Gateway — single chat, broadcast, REST API",
+  "scripts": {
+    "check:deploy": "node scripts/check-deploy-scripts.mjs",
+    "test": "npm test --prefix backend",
+    "check:frontend": "npm run check --prefix frontend",
+    "verify": "npm run check:deploy && npm run test && npm run check:frontend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

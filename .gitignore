@@ -1,10 +1,19 @@
 node_modules
 .next
-.env
-.env.local
 .wa-sessions
 uploads/*
 !uploads/.gitkeep
 dist
 *.log
 .DS_Store
+
+# Environment files: never commit real secrets.
+# Keep the .example templates tracked so setup stays documented.
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+!.env.example
+!.env.local.example
+!.env.production.example

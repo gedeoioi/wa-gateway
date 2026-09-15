@@ -66,7 +66,9 @@ services:
       # Persistent: tanpa ini, setiap redeploy menghapus sesi WhatsApp
       - /var/lib/wa-gateway:/data
     ports:
-      - "${API_PORT:-4000}:4000"
+      # Bound to loopback only: Nginx is the sole public entrypoint. Exposing
+      # these on 0.0.0.0 would let anyone bypass the proxy and hit the API.
+      - "127.0.0.1:${API_PORT:-4000}:4000"
 
   worker:
     build:
@@ -79,6 +81,15 @@ services:
       redis:
         condition: service_healthy
     command: ["node", "src/queue/worker.js"]
+    # The worker runs no HTTP server, so it must not inherit the API's HTTP
+    # healthcheck (that would always report "unhealthy"). Check the process
+    # is alive instead.
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'src/queue/worker.js' > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-wa_gateway}?schema=public
@@ -103,7 +114,9 @@ services:
     depends_on:
       - api
     ports:
-      - "${FRONTEND_PORT:-3100}:3000"
+      # Host 3100 -> container 3000. Nginx proxies to 3100.
+      # Bound to loopback so the app is only reachable through Nginx.
+      - "127.0.0.1:${FRONTEND_PORT:-3100}:3000"
 
 volumes:
   pgdata:
