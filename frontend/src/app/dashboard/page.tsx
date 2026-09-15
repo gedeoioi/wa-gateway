@@ -88,10 +88,14 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => (
-          <div key={card.label} className="card card-pad">
+        {cards.map((card, index) => (
+          <div
+            key={card.label}
+            className="card card-pad stagger-item"
+            style={{ "--stagger-index": index } as React.CSSProperties}
+          >
             <p className="text-sm text-slate-500">{card.label}</p>
-            <p className={`mt-2 text-3xl font-semibold ${card.tone}`}>
+            <p className={`mt-2 text-3xl font-semibold tabular-nums ${card.tone}`}>
               {card.value.toLocaleString("id-ID")}
             </p>
           </div>

@@ -180,7 +180,7 @@ export default function ConnectPage() {
                 <li key={device.id}>
                   <button
                     onClick={() => setSelected(device)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-3 text-left transition ${
+                    className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-3 text-left transition-colors duration-fast ease-swift ${
                       selected?.id === device.id
                         ? "border-brand-500 bg-brand-50"
                         : "border-slate-200 hover:bg-slate-50"

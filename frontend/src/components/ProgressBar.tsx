@@ -18,13 +18,25 @@ export function ProgressBar({ value, max = 100, showLabel = true, tone = "brand"
   return (
     <div className="w-full">
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+        {/*
+          Animated with scaleX, not width.
+          Animating `width` forces layout on every frame; scaleX is composited
+          on the GPU. The outer track is the full width and the inner bar is
+          scaled, with `origin-left` so it grows from the start edge.
+          This matters during a broadcast, where the value updates several
+          times a second while other content is on screen.
+        */}
         <div
-          className={`h-full rounded-full transition-all duration-500 ${tones[tone]}`}
-          style={{ width: `${pct}%` }}
+          className={`h-full w-full origin-left rounded-full ${tones[tone]}`}
+          style={{
+            transform: `scaleX(${pct / 100})`,
+            transition: "transform 480ms cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
+          aria-label={`Progres ${pct}%`}
         />
       </div>
       {showLabel && (
@@ -32,7 +44,7 @@ export function ProgressBar({ value, max = 100, showLabel = true, tone = "brand"
           <span>
             {value} / {max}
           </span>
-          <span>{pct}%</span>
+          <span className="tabular-nums transition-colors duration-slow">{pct}%</span>
         </div>
       )}
     </div>

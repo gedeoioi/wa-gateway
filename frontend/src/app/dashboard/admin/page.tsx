@@ -275,7 +275,7 @@ export default function AdminPage() {
               <button
                 key={member.id}
                 onClick={() => openMember(member)}
-                className="block w-full space-y-2 p-4 text-left hover:bg-slate-50"
+                className="row-hover block w-full space-y-2 p-4 text-left hover:bg-slate-50"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -326,7 +326,7 @@ export default function AdminPage() {
                 </tr>
               ) : (
                 members.map((member) => (
-                  <tr key={member.id} className="hover:bg-slate-50">
+                  <tr key={member.id} className="row-hover hover:bg-slate-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="min-w-0">
@@ -457,12 +457,15 @@ function MemberPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 sm:items-center sm:p-4"
+      className="animate-enter fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
+        // Sheet on mobile (slides up), dialog on desktop (scales in).
+        // Uses local animate-enter-* classes so the keyframes are guaranteed
+        // to exist (Tailwind only emits @keyframes for used animate-* utilities).
+        className="animate-enter-sheet max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:animate-enter-scale sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -499,7 +502,7 @@ function MemberPanel({
                   key={plan.id}
                   disabled={busy || member.plan === plan.id}
                   onClick={() => onPatch(member, { plan: plan.id }, `Paket diubah ke ${plan.name}`)}
-                  className={`rounded-lg border px-3 py-3 text-left text-sm transition disabled:opacity-60 ${
+                  className={`rounded-lg border px-3 py-3 text-left text-sm transition-colors duration-fast ease-swift disabled:opacity-60 ${
                     member.plan === plan.id
                       ? "border-brand-500 bg-brand-50"
                       : "border-slate-200 hover:bg-slate-50"

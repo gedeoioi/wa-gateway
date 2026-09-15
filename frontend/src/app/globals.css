@@ -16,6 +16,9 @@
     /* Prevent iOS Safari from inflating text in landscape */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* Gives in-page anchor links (#fitur, #harga) a smooth scroll and leaves
+       room for the sticky header via scroll-margin on the target sections. */
+    scroll-behavior: smooth;
   }
 
   body {
@@ -36,23 +39,78 @@
   *:focus-visible {
     @apply outline-none ring-2 ring-brand-500 ring-offset-2;
   }
+
+  /**
+   * Respect the OS "reduce motion" setting.
+   *
+   * Animations that move or scale can trigger nausea and dizziness for people
+   * with vestibular disorders, and it is a WCAG 2.3.3 requirement to allow
+   * opting out. Transitions are reduced to a near-instant opacity change rather
+   * than removed entirely, so state changes still read as intentional.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
   .card {
     @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    /* Only paint properties are animated; layout stays static so the browser
+       can composite on the GPU instead of reflowing. */
+    transition:
+      box-shadow var(--motion-base, 200ms) cubic-bezier(0.22, 1, 0.36, 1),
+      border-color var(--motion-base, 200ms) cubic-bezier(0.22, 1, 0.36, 1),
+      transform var(--motion-base, 200ms) cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .card-pad {
     @apply p-5 sm:p-6;
   }
 
+  /* Cards that lift slightly on hover. Kept subtle (2px) because large
+     movement on a dense dashboard feels unstable. */
+  .card-interactive {
+    @apply card;
+    will-change: transform;
+  }
+
+  .card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.08),
+      0 4px 6px -4px rgb(0 0 0 / 0.05);
+  }
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium
            disabled:cursor-not-allowed disabled:opacity-60;
     /* Comfortable tap target on touch devices (WCAG 2.5.8) */
     min-height: 2.75rem;
     touch-action: manipulation;
+    /* Explicit properties instead of `transition-all`: avoids animating layout
+       properties and keeps the hover response tight. */
+    transition:
+      background-color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 120ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
   }
 
   .btn-primary {
@@ -76,6 +134,9 @@
            placeholder:text-slate-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500;
     /* 16px minimum stops iOS Safari from zooming in on focus */
     font-size: 1rem;
+    transition:
+      border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   @screen sm {
@@ -94,5 +155,135 @@
 
   .table-head {
     @apply bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  /* Row feedback on hover, used by the desktop tables in logs and admin. */
+  .row-hover {
+    transition: background-color 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Staggered entrance for lists/grids. Set --stagger-index per item; the
+     delay is capped so a long list never waits seconds to finish appearing.
+
+     The @keyframes are declared here rather than relying on Tailwind's
+     `animation-fill-mode: both` utility. Tailwind only emits @keyframes for
+     animate-* utilities that are actually used in the markup; referencing
+     `fade-in-up` from a component class alone leaves the keyframes undefined,
+     and with `both` fill-mode the element stays at opacity 0 — invisible. */
+  @keyframes stagger-enter {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stagger-item {
+    animation: stagger-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(min(var(--stagger-index, 0) * 45ms, 400ms));
+  }
+
+  /* Skeleton shimmer for loading states. Keyframes declared locally for the
+     same reason as above. */
+  @keyframes skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded bg-slate-200;
+  }
+
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0,
+      rgba(255, 255, 255, 0.5) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    animation: skeleton-shimmer 1.6s infinite;
+  }
+}
+
+@layer utilities {
+  /* Fade + slide used by page transitions and toast notifications.
+     Keyframes declared explicitly so both are always available. */
+  @keyframes enter-fade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes enter-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes enter-scale {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes enter-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-enter {
+    animation: enter-fade 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-enter-up {
+    animation: enter-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-enter-scale {
+    animation: enter-scale 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-enter-sheet {
+    animation: enter-slide-up 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Applied to elements that animate transform, so the browser promotes them
+     to their own layer instead of repainting the whole subtree. */
+  .gpu {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  /* Anchor targets: keeps the sticky header from covering the heading. */
+  .scroll-anchor {
+    scroll-margin-top: 5rem;
   }
 }

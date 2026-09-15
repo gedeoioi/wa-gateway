@@ -179,7 +179,7 @@ export default function LogsPage() {
                 </tr>
               ) : (
                 items.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50">
+                  <tr key={item.id} className="row-hover hover:bg-slate-50">
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                       {new Date(item.createdAt).toLocaleString("id-ID")}
                     </td>

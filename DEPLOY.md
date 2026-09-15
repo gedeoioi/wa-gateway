@@ -324,13 +324,19 @@ Sebelum deploy, jalankan pemeriksaan di lokal:
 
 ```bash
 cd frontend
-npm run check     # boundary check + eslint + build
+npm run check     # boundary + eslint + build + animation check
 npm run verify    # jalankan mode PRODUKSI lokal, uji halaman utama
 ```
 
 `npm run verify` penting: sebagian error Next.js **tidak** muncul saat `next build`
-dan hanya tampil sebagai 500 saat halaman dirender. `scripts/check-server-components.mjs`
-menangkap kelas bug itu secara statis.
+dan hanya tampil sebagai 500 saat halaman dirender.
+
+Dua pemeriksa statis menangkap kelas bug yang lolos dari build:
+
+| Pemeriksa | Menangkap | Gejala kalau lolos |
+| --- | --- | --- |
+| `check-server-components.mjs` | event handler di Server Component | HTTP 500 saat render |
+| `check-animations.mjs` | `@keyframes` hilang untuk animasi lokal | elemen tertahan `opacity: 0`, halaman terlihat kosong |
 
 ---
 

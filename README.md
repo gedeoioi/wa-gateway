@@ -59,6 +59,41 @@ Dibangun dengan Node.js + Baileys (backend) dan Next.js + Tailwind (frontend).
 - Target sentuh minimal 44px dan input 16px agar iOS tidak auto-zoom
 - Breakpoint `xs` (400px) kustom untuk HP kecil, didefinisikan di `tailwind.config.ts`
 
+### Animasi & Motion
+Sistem animasi terpusat sebagai design token di `tailwind.config.ts`, bukan nilai
+yang ditulis ad-hoc per komponen.
+
+| Token | Nilai | Dipakai untuk |
+| --- | --- | --- |
+| `duration-fast` | 120ms | hover warna (tombol, link nav) |
+| `duration-base` | 200ms | kartu, input, chevron |
+| `duration-slow` | 320ms | drawer sidebar, panel |
+| `ease-swift` | `cubic-bezier(.22,1,.36,1)` | responsif, berhenti halus |
+| `ease-out-soft` | `cubic-bezier(.16,1,.3,1)` | panel & sheet besar |
+
+Kelas siap pakai: `.animate-enter`, `.animate-enter-up`, `.animate-enter-scale`,
+`.animate-enter-sheet`, `.stagger-item`, `.card-interactive`, `.row-hover`,
+`.scroll-anchor`.
+
+Prinsip yang dipegang:
+
+- **Hanya properti paint/transform yang dianimasikan.** `transition-all` dihindari
+  karena ikut menganimasikan properti layout (width/height) yang memaksa reflow
+  setiap frame.
+- **Progress bar memakai `transform: scaleX()`**, bukan `width`. Ini penting untuk
+  broadcast yang nilainya berubah beberapa kali per detik.
+- **Stagger untuk daftar.** `.stagger-item` memakai `--stagger-index` dengan delay
+  dibatasi 400ms, jadi daftar panjang tidak menunggu lama.
+- **`prefers-reduced-motion` dihormati.** Animasi diperpendek jadi ~0ms (bukan
+  dihapus) agar perubahan state tetap terbaca. Ini syarat WCAG 2.3.3.
+
+> **Penting**: `@keyframes` untuk animasi lokal dideklarasikan **langsung di
+> `globals.css`**, bukan hanya di `tailwind.config.ts`. Tailwind hanya memancarkan
+> `@keyframes` untuk utility `animate-*` yang benar-benar dipakai di markup; jika
+> keyframes tidak ada tetapi `animation-fill-mode: both` dipakai, elemen akan
+> **tertahan di `opacity: 0` alias tidak terlihat**. `npm run check` memverifikasi
+> ini otomatis lewat `scripts/check-animations.mjs`.
+
 ### Paket & Admin Panel
 Satu sumber kebenaran untuk paket ada di `backend/src/config/plans.js`. Paket menentukan
 kuota pesan dan batas device, sehingga tabel harga di landing page benar-benar ditegakkan.
@@ -118,6 +153,7 @@ wa-gateway/
         │   ├── (auth)/login, (auth)/register
         │   └── dashboard/                      # layout + 8 halaman (termasuk admin)
         ├── components/                         # StatusBadge, ProgressBar, Toast, Logo
+        ├── scripts/                            # check-server-components, check-animations
         └── lib/                                # api client, auth context, socket hook
 ```
 
@@ -171,9 +207,17 @@ npm run dev                          # http://localhost:3100
 **Sebelum build/deploy, jalankan pipeline pemeriksaan:**
 
 ```bash
-npm run check        # boundary check + eslint + build
+npm run check        # boundary + eslint + build + animation check
 npm run verify       # build + jalankan mode PRODUKSI lokal di port 3100
 ```
+
+Pipeline `check` menjalankan dua pemeriksa otomatis yang menangkap kelas bug yang
+**tidak terdeteksi oleh `next build`**:
+
+| Pemeriksa | Menangkap |
+| --- | --- |
+| `scripts/check-server-components.mjs` | event handler di Server Component → HTTP 500 saat render |
+| `scripts/check-animations.mjs` | `@keyframes` hilang → elemen tertahan `opacity: 0` (tak terlihat) |
 
 > **Penting**: selalu uji dengan `npm run verify`, bukan hanya `npm run dev`.
 > Next.js tidak menangkap sebagian error (mis. event handler di Server Component)

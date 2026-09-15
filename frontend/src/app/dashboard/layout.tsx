@@ -66,7 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-slate-50">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-slate-200 bg-white transition-transform duration-slow ease-out-soft will-change-transform lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-fast ease-swift ${
                   active ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
@@ -96,7 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {isAdmin && (
             <Link
               href={ADMIN_NAV.href}
-              className={`mt-2 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
+              className={`mt-2 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors duration-fast ease-swift ${
                 pathname === ADMIN_NAV.href
                   ? "border-amber-300 bg-amber-50 text-amber-800"
                   : "border-amber-200 text-amber-700 hover:bg-amber-50"
@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+          className="animate-enter fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[2px] lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden
         />

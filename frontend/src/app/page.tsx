@@ -156,7 +156,7 @@ export default async function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-x-0 -top-32 h-72 bg-gradient-to-b from-brand-100/70 to-transparent" />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-14 sm:py-20 lg:grid-cols-2 lg:items-center lg:py-28">
-          <div className="mx-auto animate-fade-in">
+          <div className="animate-enter-up">
             <span className="badge bg-brand-50 text-brand-700">Ringan · Mudah · Cepat</span>
             <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               WhatsApp Gateway untuk <span className="text-brand-600">chat &amp; broadcast</span> otomatis
@@ -183,7 +183,7 @@ export default async function LandingPage() {
             </dl>
           </div>
 
-          <div className="animate-fade-in">
+          <div className="stagger-item" style={{ "--stagger-index": 2 } as React.CSSProperties}>
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-brand-900/5">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
@@ -224,7 +224,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section id="fitur" className="border-t border-slate-100 bg-slate-50 py-14 sm:py-20">
+      <section id="fitur" className="scroll-anchor border-t border-slate-100 bg-slate-50 py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
@@ -235,8 +235,14 @@ export default async function LandingPage() {
             </p>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature) => (
-              <div key={feature.title} className="card card-pad transition hover:shadow-md">
+            {FEATURES.map((feature, index) => (
+              <div
+                key={feature.title}
+                // Staggered entrance: each card starts 45ms after the previous
+                // one, so the grid assembles rather than appearing all at once.
+                className="card-interactive card-pad stagger-item hover:border-brand-200"
+                style={{ "--stagger-index": index } as React.CSSProperties}
+              >
                 <span className="grid h-11 w-11 place-items-center rounded-lg bg-brand-50 text-brand-600">
                   <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth={1.8}>
                     <path strokeLinecap="round" strokeLinejoin="round" d={feature.icon} />
@@ -250,15 +256,19 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section id="cara-kerja" className="py-14 sm:py-20">
+      <section id="cara-kerja" className="scroll-anchor py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Mulai dalam 3 langkah</h2>
             <p className="mt-3 text-slate-600">Tidak perlu instalasi rumit. Kurang dari 5 menit untuk pesan pertama.</p>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {STEPS.map((item) => (
-              <div key={item.step} className="relative card card-pad">
+            {STEPS.map((item, index) => (
+              <div
+                key={item.step}
+                className="card-interactive card-pad stagger-item relative"
+                style={{ "--stagger-index": index } as React.CSSProperties}
+              >
                 <span className="text-4xl font-bold text-brand-100">{item.step}</span>
                 <h3 className="mt-3 font-semibold text-slate-900">{item.title}</h3>
                 <p className="mt-2 text-sm text-slate-600">{item.body}</p>
@@ -268,19 +278,20 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section id="harga" className="border-y border-slate-100 bg-slate-50 py-14 sm:py-20">
+      <section id="harga" className="scroll-anchor border-y border-slate-100 bg-slate-50 py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Harga sederhana, tanpa kejutan</h2>
             <p className="mt-3 text-slate-600">Mulai gratis, upgrade saat trafik pesan Anda bertambah.</p>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {plans.map((plan) => (
+            {plans.map((plan, index) => (
               <div
                 key={plan.id}
-                className={`card card-pad relative ${
+                className={`card-interactive card-pad stagger-item relative ${
                   plan.highlighted ? "border-brand-500 ring-2 ring-brand-500/20" : ""
                 }`}
+                style={{ "--stagger-index": index } as React.CSSProperties}
               >
                 {plan.highlighted && (
                   <span className="absolute -top-3 left-5 badge bg-brand-600 text-white">Paling populer</span>
@@ -316,7 +327,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section id="faq" className="py-14 sm:py-20">
+      <section id="faq" className="scroll-anchor py-14 sm:py-20">
         <div className="mx-auto max-w-3xl px-4">
           <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Pertanyaan yang sering diajukan</h2>
           <div className="mt-10 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
@@ -326,7 +337,7 @@ export default async function LandingPage() {
                   {item.q}
                   <svg
                     viewBox="0 0 24 24"
-                    className="h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-180"
+                    className="h-5 w-5 shrink-0 text-slate-400 transition-transform duration-base ease-swift group-open:rotate-180"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth={2}

@@ -8,8 +8,9 @@
     "start": "next start -p 3100",
     "lint": "next lint",
     "check:boundary": "node scripts/check-server-components.mjs",
-    "check": "npm run check:boundary && npm run lint && npm run build",
-    "verify": "npm run build && node scripts/check-server-components.mjs && npm start"
+    "check:animations": "node scripts/check-animations.mjs",
+    "check": "npm run check:boundary && npm run lint && npm run build && npm run check:animations",
+    "verify": "npm run build && node scripts/check-server-components.mjs && npm run check:animations && npm start"
   },
   "dependencies": {
     "next": "14.2.23",
