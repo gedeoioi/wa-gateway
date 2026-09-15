@@ -31,15 +31,20 @@ ENV NODE_ENV=production \
 
 RUN groupadd -r next && useradd -r -g next -m next
 
-# `output: "standalone"` bundles only the files actually needed at runtime
-COPY --from=builder /app/public ./public
+# `output: "standalone"` bundles only the files actually needed at runtime.
+# All copies use --chown so nothing is left owned by root: the container runs
+# as user `next`, and root-owned files break asset reads and healthcheck writes.
+COPY --from=builder --chown=next:next /app/public ./public
 COPY --from=builder --chown=next:next /app/.next/standalone ./
 COPY --from=builder --chown=next:next /app/.next/static ./.next/static
 
 USER next
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+# Uses node's built-in fetch rather than curl/wget, which are not present in
+# node:bookworm-slim. A missing binary here would make the container report
+# "unhealthy" forever while serving traffic perfectly.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]

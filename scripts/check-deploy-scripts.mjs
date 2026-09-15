@@ -186,6 +186,25 @@ for (const name of SCRIPTS) {
     pass(`semua pemanggilan fungsi terdefinisi (${defined.size} fungsi)`);
   }
 
+  // A function defined AFTER its first use works in bash only by accident of
+  // source order; bash resolves at call time, so late definitions silently
+  // fail with "command not found". Check the order explicitly.
+  const lateDefined = [];
+  for (const fn of defined) {
+    const defLine = lines.findIndex((l) => new RegExp(`^\\s*${fn}\\(\\)\\s*\\{`).test(l));
+    const firstUse = lines.findIndex(
+      (l, i) => i !== defLine && new RegExp(`(^|[^A-Za-z0-9_])${fn}(\\s|$)`).test(l) && !/^\s*#/.test(l),
+    );
+    if (defLine >= 0 && firstUse >= 0 && firstUse < defLine) {
+      lateDefined.push(`${fn} (dipakai di baris ${firstUse + 1}, didefinisikan di ${defLine + 1})`);
+    }
+  }
+  if (lateDefined.length) {
+    fail(`fungsi didefinisikan setelah dipakai: ${lateDefined.join("; ")}`);
+  } else {
+    pass("semua fungsi didefinisikan sebelum dipakai");
+  }
+
   // Report loop-local helpers so typos in helper names are visible
   const helpers = [...defined].filter((d) => /^(step|ok|warn|note|die|pass|fail|info|section|service_health|check_http|read_env|compose|usage|on_error)$/.test(d));
   console.log(`        helper: ${helpers.join(", ")}`);

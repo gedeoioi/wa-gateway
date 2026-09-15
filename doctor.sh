@@ -92,6 +92,29 @@ else
 fi
 
 # ------------------------------------------------------------------- server
+# Print the last healthcheck probe result so an "unhealthy" report is
+# actionable instead of a guessing game. Docker stores the exit code and the
+# captured output (stdout+stderr) of the most recent probe.
+show_healthcheck_detail() {
+  local cid="$1" label="$2"
+  local out exit_code
+  out="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Log}}{{end}}' "$cid" 2>/dev/null || echo '')"
+  [[ -z "$out" || "$out" == "[]" ]] && return 0
+
+  # Log is a Go-slice literal; surface the last probe's ExitCode and Output
+  exit_code="$(printf '%s' "$out" | grep -oE 'ExitCode:[0-9]+' | tail -n1 | cut -d: -f2)"
+  info "probe terakhir $label: exit=${exit_code:-?}"
+
+  printf '%s' "$out" \
+    | grep -oE 'Output:[^}]*' \
+    | tail -n1 \
+    | sed -e 's/^Output://' -e 's/\\n$//' -e 's/\\n/\n        /g' \
+    | head -c 600 \
+    | while IFS= read -r line; do
+        [[ -n "$line" ]] && printf '        %s\n' "$line"
+      done
+}
+
 section "Container"
 if ! docker compose version >/dev/null 2>&1; then
   fail "Docker Compose tidak tersedia"
@@ -140,6 +163,7 @@ for name in api frontend worker postgres redis; do
       fi
     else
       fail "$name running tapi UNHEALTHY (restarts=$restarting)"
+      show_healthcheck_detail "$cid" "$name"
     fi
   elif [[ "$health" == "healthy" ]]; then
     pass "$name running & healthy"
@@ -148,8 +172,6 @@ for name in api frontend worker postgres redis; do
   fi
 done
 
-# --------------------------------------------------------------------- port
-section "Port & endpoint lokal"
 check_http() {
   local label="$1" url="$2" expect="${3:-200}"
   local code

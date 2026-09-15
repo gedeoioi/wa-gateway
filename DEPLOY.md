@@ -223,6 +223,47 @@ docker compose -f docker-compose.prod.yml --env-file .env.production logs -f api
 | `worker unhealthy` | healthcheck HTTP warisan image lama | `docker compose ... up -d --force-recreate worker` |
 | `publik frontend -> 301` | redirect HTTP→HTTPS (normal) | bukan error; `doctor.sh` sudah mengikuti redirect |
 
+### `frontend unhealthy` padahal halaman bisa diakses
+
+Kalau `curl http://127.0.0.1:3100` mengembalikan 200 tapi status container
+`unhealthy`, masalahnya ada di healthcheck, bukan aplikasi.
+
+`doctor.sh` sekarang menampilkan hasil probe terakhir (exit code + output) untuk
+setiap container yang unhealthy, jadi penyebabnya terlihat langsung:
+
+```bash
+./doctor.sh
+```
+
+Penyebab yang sudah pernah terjadi di proyek ini:
+
+| Penyebab | Gejala | Perbaikan |
+| --- | --- | --- |
+| Healthcheck memakai `curl`/`wget` | `exec: curl: not found` | pakai `node -e "fetch(...)"` (sudah dilakukan) |
+| Healthcheck memakai `pgrep` | `pgrep: not found` | `procps` tidak ada di `bookworm-slim` |
+| `public/` di-copy tanpa `--chown` | aset 500, container `next` tidak bisa baca | `COPY --chown=next:next` (sudah dilakukan) |
+| `start_period` terlalu pendek | unhealthy pada detik-detik awal | sudah 20s |
+| Port healthcheck salah | `ECONNREFUSED` | pastikan `PORT` cocok (container 3000) |
+
+Untuk memeriksa manual:
+
+```bash
+CID=$(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q frontend)
+
+# Hasil probe terakhir, termasuk pesan errornya
+docker inspect --format '{{json .State.Health}}' "$CID" \
+  | python3 -m json.tool 2>/dev/null | tail -30 \
+  || docker inspect --format '{{json .State.Health}}' "$CID"
+
+# Jalankan perintah healthcheck persis, dari dalam container
+docker compose -f docker-compose.prod.yml --env-file .env.production exec frontend \
+  node -e "fetch('http://127.0.0.1:3000/').then(r=>{console.log(r.status);process.exit(0)}).catch(e=>{console.error(e.message);process.exit(1)})"
+```
+
+**Catatan penting**: `frontend unhealthy` tidak menghalangi trafik. Kalau
+`curl http://127.0.0.1:3100` dan `https://wa.domain-anda.com` sudah 200, situs Anda
+berjalan normal — status itu murni sinyal monitoring.
+
 ### `worker unhealthy` padahal tidak crash
 
 Worker tidak menjalankan HTTP server, sehingga healthcheck HTTP biasa tidak bisa
