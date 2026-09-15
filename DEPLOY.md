@@ -220,6 +220,38 @@ docker compose -f docker-compose.prod.yml --env-file .env.production logs -f api
 | Sesi WhatsApp hilang | `/var/lib/wa-gateway` tidak persisten | cek bagian "Data persisten" |
 | Redirect loop | Cloudflare mode Flexible | ubah ke `Full (strict)` |
 | Upload gagal | `client_max_body_size` < `MAX_UPLOAD_MB` | naikkan di Nginx |
+| `worker unhealthy` | healthcheck HTTP warisan image lama | `docker compose ... up -d --force-recreate worker` |
+| `publik frontend -> 301` | redirect HTTP→HTTPS (normal) | bukan error; `doctor.sh` sudah mengikuti redirect |
+
+### `worker unhealthy` padahal tidak crash
+
+Worker tidak menjalankan HTTP server. Image lama mewarisi healthcheck HTTP dari
+`backend/Dockerfile`, sehingga selalu melaporkan `unhealthy` meski worker bekerja
+normal. Cara memastikan:
+
+```bash
+# restarts=0 berarti tidak pernah crash -> sehat
+docker inspect --format '{{.RestartCount}}' $(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q worker)
+
+# healthcheck yang benar harus memuat pgrep, bukan /health
+docker inspect --format '{{json .Config.Healthcheck}}' $(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q worker)
+```
+
+Perbaikan permanen:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --force-recreate worker
+```
+
+`deploy.sh` sudah menangani ini otomatis — healthcheck didefinisikan di
+`docker-compose.prod.yml`, dan container yang sudah ada hanya memakai definisi baru
+setelah di-recreate.
+
+### `301` pada pemeriksaan HTTPS
+
+`doctor.sh` mengikuti redirect (`curl -sIL`), jadi `301` di laporan berarti
+**redirect berulang** — hampir selalu Cloudflare mode `Flexible`. Ubah ke
+`Full (strict)` lalu jalankan `./doctor.sh` lagi.
 
 ### Frontend 500 setelah update kode
 

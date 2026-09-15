@@ -26,6 +26,7 @@ info() { printf '  %sℹ%s %s\n' "$BLUE" "$NC" "$1"; }
 section() { printf '\n%s%s%s\n' "$BOLD" "$1" "$NC"; }
 
 FAILED=0
+WORKER_HC_STALE=0
 read_env() {
   local key="$1"
   [[ -f "$ENV_FILE" ]] || return 0
@@ -116,7 +117,21 @@ for name in api frontend worker postgres redis; do
   if [[ "$state" != "running" ]]; then
     fail "$name status=$state (restarts=$restarting)"
   elif [[ "$health" == "unhealthy" ]]; then
-    fail "$name running tapi UNHEALTHY (restarts=$restarting)"
+    if [[ "$name" == "worker" ]]; then
+      # The worker runs no HTTP server. An outdated image inherits the API's
+      # HTTP healthcheck, which always fails even though the worker is fine.
+      hc="$(docker inspect --format '{{json .Config.Healthcheck}}' "$cid" 2>/dev/null || echo '')"
+      if [[ "$hc" == *"/health"* ]]; then
+        fail "$name healthcheck masih memakai HTTP /health (warisan image lama, bukan kerusakan)"
+        info "Perbaiki: docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --force-recreate worker"
+        WORKER_HC_STALE=1
+      else
+        fail "$name running tapi UNHEALTHY (restarts=$restarting)"
+        info "Cek: docker compose -f $COMPOSE_FILE --env-file $ENV_FILE logs --tail=40 worker"
+      fi
+    else
+      fail "$name running tapi UNHEALTHY (restarts=$restarting)"
+    fi
   elif [[ "$health" == "healthy" ]]; then
     pass "$name running & healthy"
   else
@@ -195,8 +210,43 @@ fi
 section "HTTPS"
 FE_HOST="$(read_env PUBLIC_FRONTEND_URL)"
 API_HOST="$(read_env PUBLIC_API_URL)"
-check_http "publik frontend" "$FE_HOST" "200"
-check_http "publik API health" "${API_HOST}/health" "200"
+
+# A 301/302 from http->https is correct behaviour, so follow redirects before
+# judging the status code. Without this, a properly secured site looks broken.
+check_public() {
+  local label="$1" url="$2"
+  if [[ -z "$url" ]]; then
+    warn "$label dilewati (URL belum diisi)"
+    return 0
+  fi
+
+  local effective code
+  effective=$(curl -sIL -o /dev/null -w '%{http_code} %{url_effective}' --max-time 20 "$url" 2>/dev/null || echo "000 -")
+  code="${effective%% *}"
+  effective="${effective#* }"
+
+  case "$code" in
+    200) pass "$label -> 200 ($effective)" ;;
+    000) fail "$label tidak dapat dijangkau ($url)" ;;
+    301|302|307|308) fail "$label terlalu banyak redirect ($code) — cek mode SSL Cloudflare (harus Full strict)" ;;
+    5*)  fail "$label -> $code ($effective)" ;;
+    *)   warn "$label -> $code ($effective)" ;;
+  esac
+}
+
+check_public "publik frontend" "$FE_HOST"
+check_public "publik API health" "${API_HOST}/health"
+
+# Cloudflare in Flexible mode sends HTTP to origin while Nginx redirects to
+# HTTPS, producing an infinite loop. Detect it explicitly.
+if command -v dig >/dev/null 2>&1 && [[ -n "$FE_HOST" ]]; then
+  fe_domain="${FE_HOST#https://}"
+  fe_domain="${fe_domain%%/*}"
+  resolved="$(dig +short "$fe_domain" 2>/dev/null | head -n1 || true)"
+  if [[ "$resolved" =~ ^(104\.|172\.6[4-9]\.|172\.7[0-1]\.) ]]; then
+    info "$fe_domain via Cloudflare ($resolved) — pastikan SSL/TLS mode = Full (strict)"
+  fi
+fi
 
 # -------------------------------------------------------------------- data
 section "Data persisten"

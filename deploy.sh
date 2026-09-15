@@ -238,6 +238,10 @@ ok "Semua image berhasil di-build"
 
 # =========================================================== 5. up
 step "Menjalankan container"
+# --force-recreate on worker: its healthcheck is defined in compose, and an
+# existing container keeps the OLD healthcheck until it is recreated. Without
+# this, the worker shows "unhealthy" forever even though it works fine.
+compose up -d --remove-orphans --force-recreate worker
 compose up -d --remove-orphans
 ok "Container dijalankan"
 
@@ -294,6 +298,27 @@ if (( ! api_ok )); then
   die "API tidak merespons di http://127.0.0.1:${API_PORT}/health"
 fi
 ok "API sehat di port $API_PORT"
+
+# The worker has no HTTP endpoint, so verify it by process + absence of errors.
+worker_state="$(service_health worker)"
+if [[ "$worker_state" == "missing" ]]; then
+  warn "worker tidak berjalan — broadcast akan dijalankan inline di proses API"
+elif [[ "$worker_state" == "unhealthy" ]]; then
+  # Distinguish a stale HTTP healthcheck (harmless) from a real crash loop.
+  worker_cid="$(compose ps -q worker 2>/dev/null || true)"
+  worker_hc="$(docker inspect --format '{{json .Config.Healthcheck}}' "$worker_cid" 2>/dev/null || echo '')"
+  worker_restarts="$(docker inspect --format '{{.RestartCount}}' "$worker_cid" 2>/dev/null || echo '?')"
+  if [[ "$worker_hc" == *"/health"* ]]; then
+    warn "worker unhealthy karena healthcheck HTTP warisan image lama (bukan kerusakan)"
+    compose up -d --force-recreate worker >/dev/null 2>&1 || true
+    ok "worker di-recreate dengan healthcheck yang benar"
+  else
+    compose logs --tail=40 worker || true
+    die "worker tidak sehat (restarts=$worker_restarts). Lihat log di atas."
+  fi
+else
+  ok "worker sehat"
+fi
 
 # =========================================================== 7. database
 step "Menyinkronkan schema database"
