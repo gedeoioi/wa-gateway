@@ -114,6 +114,15 @@ export const env = {
     windowMs: num(process.env.RATE_LIMIT_WINDOW_MS, 60_000),
     max: num(process.env.RATE_LIMIT_MAX, 120),
   },
+
+  /**
+   * Number of reverse-proxy hops in front of the app, used for `trust proxy`.
+   *   1 = single Nginx
+   *   2 = Cloudflare -> Nginx (default)
+   * Set higher only if you add more proxies; over-trusting lets clients spoof
+   * their IP via X-Forwarded-For and evade rate limits.
+   */
+  trustProxyHops: num(process.env.TRUST_PROXY_HOPS, 2),
 };
 
 assertProductionSecrets(env);

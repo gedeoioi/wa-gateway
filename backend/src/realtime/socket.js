@@ -18,6 +18,20 @@ class Realtime {
       path: "/socket.io",
       serveClient: false,
       maxHttpBufferSize: 1e6,
+      // ---------------------------------------------------------------------
+      // Keepalive tuned for proxied deployments.
+      //
+      // Cloudflare closes upstream connections that look idle for ~100s. The
+      // Socket.IO defaults (pingInterval 25s / pingTimeout 20s) normally suffice,
+      // but tightening the interval and widening the timeout means a single
+      // dropped ping does not immediately kill the session — useful when the
+      // edge buffers or briefly stalls the connection.
+      // ---------------------------------------------------------------------
+      pingInterval: 25_000,
+      pingTimeout: 30_000,
+      // Polling responses must not be cached by the edge or the client can see
+      // stale status updates.
+      transports: ["websocket", "polling"],
     });
 
     this.io.use((socket, next) => {

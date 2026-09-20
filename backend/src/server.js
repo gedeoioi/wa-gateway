@@ -17,6 +17,21 @@ async function main() {
   const app = createApp();
   const server = http.createServer(app);
 
+  // ---------------------------------------------------------------------------
+  // Timeouts tuned for a reverse proxy (Cloudflare / Nginx).
+  //
+  // Node's default keepAliveTimeout is 5000ms, but Cloudflare keeps idle
+  // upstream connections for up to ~100s and reuses them. When Node closes the
+  // socket first, Cloudflare's next request goes out on a dead connection; if
+  // the retry also fails the edge returns 522 even though the app is healthy.
+  //
+  // headersTimeout must stay ABOVE keepAliveTimeout, otherwise Node aborts
+  // requests that arrive just as the keep-alive window closes.
+  // ---------------------------------------------------------------------------
+  server.keepAliveTimeout = 120_000; // > Cloudflare's ~100s idle window
+  server.headersTimeout = 125_000; // must exceed keepAliveTimeout
+  server.requestTimeout = 0; // uploads/broadcast can be slow; no hard cap
+
   realtime.attach(server);
   startBroadcastWorker();
 

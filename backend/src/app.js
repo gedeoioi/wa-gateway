@@ -55,7 +55,19 @@ import { publicApiHandlers } from "./routes/public-api.routes.js";
 export function createApp() {
   const app = express();
 
-  app.set("trust proxy", 1);
+  // ---------------------------------------------------------------------------
+  // Proxy trust.
+  //
+  // `req.ip` and express-rate-limit keying depend on this. The number of hops
+  // must match the real topology or the recorded client IP is wrong:
+  //   direct / single Nginx            -> 1
+  //   Cloudflare -> Nginx -> app       -> 2
+  //
+  // Cloudflare also sends a spoofable X-Forwarded-For, so trusting too many
+  // hops would let a client forge its own IP and bypass rate limiting.
+  // Configure with TRUST_PROXY_HOPS (default 2).
+  // ---------------------------------------------------------------------------
+  app.set("trust proxy", env.trustProxyHops);
 
   app.use(
     helmet({
@@ -77,6 +89,24 @@ export function createApp() {
 
   // Serve uploaded media referenced by message logs
   app.use("/uploads", express.static(env.uploadDir, { maxAge: "1h" }));
+
+  // ---------------------------------------------------------------------------
+  // Tell Cloudflare never to cache API or realtime responses.
+  //
+  // The edge caches by file extension/URL heuristics. A cached /health or
+  // Socket.IO polling response would report stale state, and a cached API
+  // response could leak one user's data to another. These endpoints are dynamic
+  // by nature and must always reach the origin.
+  // ---------------------------------------------------------------------------
+  app.use(["/api", "/socket.io", "/health", "/openapi.json"], (_req, res, next) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    // Cloudflare-specific: bypass cache entirely for these paths
+    res.set("CDN-Cache-Control", "no-store");
+    res.set("Cloudflare-CDN-Cache-Control", "no-store");
+    next();
+  });
 
   app.get("/health", (_req, res) =>
     res.json({ ok: true, uptime: process.uptime(), env: env.nodeEnv }),

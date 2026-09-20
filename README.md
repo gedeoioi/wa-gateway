@@ -499,3 +499,25 @@ Solusinya di `src/app.js`: rute publik didaftarkan **lebih dulu**, dilindungi mi
 - **Skalabilitas**: jalankan API dan worker sebagai proses terpisah, dan pertimbangkan
   memisahkan device aktif ke node berbeda bila jumlah koneksi sangat besar.
 - **Reset total**: hapus tabel lewat `npx prisma migrate reset`, lalu hapus `.wa-sessions`.
+
+### Di balik Cloudflare
+
+Domain yang di-proxy Cloudflare punya jebakan tersendiri. Panduan lengkap ada di
+**[docs/CLOUDFLARE.md](./docs/CLOUDFLARE.md)**.
+
+Tiga hal yang sudah ditangani aplikasi (tidak perlu dikonfigurasi):
+
+| Masalah | Penanganan |
+| --- | --- |
+| 522 karena timeout mismatch | `keepAliveTimeout` 120s (> idle 100s Cloudflare); default Node 5s menutup socket lebih dulu |
+| IP klien salah | `trust proxy` = `TRUST_PROXY_HOPS` (default 2: Cloudflare → Nginx) |
+| Respons ter-cache di edge | `Cache-Control: no-store` + `CDN-Cache-Control` untuk `/api`, `/socket.io`, `/health` |
+
+Yang **wajib** Anda pastikan di Cloudflare:
+
+- **SSL/TLS mode `Full (strict)`** — mode `Flexible` menyebabkan redirect loop
+- **WebSockets On** (Network → WebSockets) — kalau tidak, realtime turun ke polling
+- **AWS Security Group membuka 80 & 443** — `ufw` di dalam instance tidak cukup
+- **DNS mengarah ke IP VPS saat ini** — IP berubah bila stop/start tanpa Elastic IP
+
+Untuk aplikasi: `TRUST_PROXY_HOPS=1` bila tanpa Cloudflare, `2` bila di belakangnya.

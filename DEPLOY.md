@@ -157,6 +157,28 @@ Bila `dig +short wa.domain-anda.com` mengembalikan IP Cloudflare (bukan IP VPS):
 - SSL/TLS mode **wajib `Full (strict)`**. Mode `Flexible` menyebabkan redirect loop
   karena Cloudflare mengirim HTTP ke Nginx, lalu Nginx memantulkan ke HTTPS.
 - Pastikan A record `wa` dan `api` menunjuk ke IP VPS Anda.
+- **AWS EC2**: buka port 80 & 443 di **Security Group**, bukan hanya `ufw`. Ini
+  penyebab **522** yang paling sering — `ufw` di dalam instance tidak membuka
+  Security Group, karena keduanya lapisan terpisah.
+
+Aplikasi sudah dikonfigurasi untuk Cloudflare (timeout, `trust proxy`, header
+anti-cache, fallback transport Socket.IO). Panduan diagnosa 522 selengkapnya ada di
+**[docs/CLOUDFLARE.md](./docs/CLOUDFLARE.md)**.
+
+Ringkas alur diagnosis 522:
+
+```bash
+curl -s http://127.0.0.1:4000/health                      # 1. app hidup?
+curl -sI -H "Host: api.domain-anda.com" http://127.0.0.1   # 2. Nginx benar?
+curl -sI https://api.domain-anda.com/health                # 3. lewat Cloudflare
+```
+
+| Langkah 1 | Langkah 2 | Langkah 3 | Artinya |
+| --- | --- | --- | --- |
+| 200 | 200 | 200 | Semua benar |
+| 200 | 200 | 522 | **Security Group / DNS salah** — bukan masalah aplikasi |
+| 200 | gagal | 5xx | Konfigurasi Nginx |
+| gagal | gagal | 522 | Container mati — jalankan `./doctor.sh` |
 
 ---
 

@@ -34,9 +34,22 @@ function getSocket(): Socket | null {
   if (!sharedSocket) {
     sharedSocket = io(SOCKET_URL, {
       auth: { token },
-      transports: ["websocket"],
+      // Try WebSocket first, then fall back to HTTP long-polling.
+      //
+      // Forcing ["websocket"] made realtime fail outright wherever the upgrade
+      // is blocked — Cloudflare with WebSockets disabled, corporate proxies,
+      // some mobile networks. Allowing polling as a fallback keeps device status
+      // and broadcast progress working, just with slightly higher latency.
+      transports: ["websocket", "polling"],
+      // Start with polling so the very first connection is not blocked by a
+      // failed upgrade handshake, then upgrade to WebSocket when possible.
+      tryAllTransports: true,
+      upgrade: true,
+      reconnection: true,
       reconnectionDelay: 1500,
       reconnectionDelayMax: 10000,
+      // Cloudflare drops idle connections after ~100s; ping well inside that.
+      timeout: 20000,
     });
   }
   return sharedSocket;
