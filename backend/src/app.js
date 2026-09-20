@@ -9,6 +9,41 @@ import { errorHandler, notFoundHandler, apiLimiter } from "./middleware/auth.js"
 import { openApiDocument } from "./lib/openapi.js";
 import { publicPlanCatalog, GLOBAL_MAX_DEVICES } from "./config/plans.js";
 
+/**
+ * Route demultiplexer.
+ *
+ * `GET /api/messages` and `GET /api/broadcast/:id` are served to two different
+ * clients: the dashboard (JWT) and the public API (API key). Express dispatches
+ * by registration order, so whichever router is registered first would always
+ * win — breaking the other client.
+ *
+ * This guard inspects the request: when an API-key credential is present it lets
+ * the public handler run; otherwise it calls next() so the request reaches the
+ * JWT router. That keeps one documented URL working for both audiences.
+ */
+function hasApiKey(req) {
+  if (req.headers["x-api-key"]) return true;
+  const auth = req.headers.authorization || "";
+  return auth.startsWith("Bearer wag_");
+}
+
+function onlyIfApiKey(req, res, next) {
+  if (hasApiKey(req)) return next();
+  // "route" skips this route entirely and continues with the next matching one,
+  // which is how a JWT request reaches the dashboard router behind it.
+  return next("route");
+}
+
+// ---------------------------------------------------------------------------
+// Public API (API key)
+//
+// `shared` routes also exist on a dashboard router under the same path, so they
+// are guarded with onlyIfApiKey to let JWT requests fall through.
+// The rest exist only here and let their own requireApiKey middleware produce a
+// proper 401 when the key is missing.
+// ---------------------------------------------------------------------------
+const shared = (handler) => [onlyIfApiKey, ...handler];
+
 import authRoutes from "./modules/auth/auth.routes.js";
 import deviceRoutes from "./modules/device/device.routes.js";
 import messageRoutes from "./modules/message/message.routes.js";
@@ -63,22 +98,32 @@ export function createApp() {
     (_req, res) => res.json({ plans: publicPlanCatalog(), globalMaxDevices: GLOBAL_MAX_DEVICES }),
   );
 
-  // Dashboard API (JWT)
+  // ---------------------------------------------------------------------------
+  // Public API (API key) — mounted BEFORE the dashboard routes.
+  //
+  // Two of these paths also exist on the dashboard routers with different auth
+  // (`GET /api/messages` and `GET /api/broadcast/:id`). Express matches in
+  // registration order, so if the JWT routers were registered first they would
+  // swallow API-key requests and reply "Token tidak ditemukan".
+  //
+  // `shared` routes only handle the request when an API key is present;
+  // otherwise they fall through to the dashboard router so both clients keep
+  // working on the same documented URL.
+  // ---------------------------------------------------------------------------
+  app.post("/api/send-message", ...publicApiHandlers["/send-message"]);
+  app.post("/api/send-broadcast", ...publicApiHandlers["/send-broadcast"]);
+  app.get("/api/device/status", ...publicApiHandlers["/device/status"]);
+  app.get("/api/broadcast/:id", ...shared(publicApiHandlers["/broadcast/:id"]));
+  app.get("/api/messages", ...shared(publicApiHandlers["/messages"]));
+
+  // Dashboard API (JWT) — registered second, so an API-key request is already
+  // handled above and only JWT requests reach these routers.
   app.use("/api/auth", authRoutes);
   app.use("/api/devices", deviceRoutes);
   app.use("/api/messages", messageRoutes);
   app.use("/api/broadcasts", broadcastRoutes);
   app.use("/api/keys", apiKeyRoutes);
   app.use("/api/admin", adminRoutes);
-
-  // Public API (API key) - same paths as in the docs.
-  // Mounted per-route so unmatched /api/* falls through to a real 404 instead
-  // of being rejected by the API-key guard.
-  app.post("/api/send-message", publicApiHandlers["/send-message"]);
-  app.post("/api/send-broadcast", publicApiHandlers["/send-broadcast"]);
-  app.get("/api/device/status", publicApiHandlers["/device/status"]);
-  app.get("/api/broadcast/:id", publicApiHandlers["/broadcast/:id"]);
-  app.get("/api/messages", publicApiHandlers["/messages"]);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

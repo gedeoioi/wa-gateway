@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 
 let passed = 0;
 let failed = 0;
@@ -87,8 +87,28 @@ try {
   await new Promise((r) => setTimeout(r, 250));
   check("fresh == true setelah start", mod.isHeartbeatFresh() === true);
 
-  // A zero-width freshness window must report stale, proving the age is used
-  check("menghormati batas stale", mod.isHeartbeatFresh(Date.now(), 0) === false);
+  // Proving the age is actually used, not ignored.
+  //
+  // Do NOT infer mtime from Date.now(): the file is written asynchronously, so
+  // the real mtime can be a millisecond or two later and a `now + threshold`
+  // comparison lands just outside the window. Read the actual mtime instead.
+  const { mtimeMs } = statSync(mod.heartbeatPath());
+  check(
+    `tepat di batas STALE_AFTER_MS (${mod.STALE_AFTER_MS}ms) -> masih segar`,
+    mod.isHeartbeatFresh(mtimeMs + mod.STALE_AFTER_MS) === true,
+  );
+  check(
+    "1ms melewati batas -> basi",
+    mod.isHeartbeatFresh(mtimeMs + mod.STALE_AFTER_MS + 1) === false,
+  );
+  check(
+    "jauh melewati batas -> basi",
+    mod.isHeartbeatFresh(mtimeMs + mod.STALE_AFTER_MS * 10) === false,
+  );
+  check(
+    "tepat di dalam jendela -> segar",
+    mod.isHeartbeatFresh(mtimeMs + Math.floor(mod.STALE_AFTER_MS / 2)) === true,
+  );
 
   mod.stopHeartbeat();
   await new Promise((r) => setTimeout(r, 250));

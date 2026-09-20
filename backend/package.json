@@ -10,6 +10,8 @@
     "start": "node src/server.js",
     "worker": "node src/queue/worker.js",
     "test": "node _config.test.mjs && node _healthcheck.test.mjs && node _e2e.mjs && node _worker-quota.test.mjs && node _admin.test.mjs",
+    "test:api": "node _api-audit.mjs",
+    "verify:all": "npm test && npm run test:api",
     "seed:admin": "node prisma/seed-admin.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",

@@ -299,14 +299,28 @@ menurunkan atau menonaktifkan akunnya sendiri.
 
 ```bash
 cd backend
-npm test              # 4 suite, 117 skenario (tanpa perlu PostgreSQL/Redis)
+
+npm test              # 5 suite, 136 skenario — in-memory, tanpa PostgreSQL/Redis
+npm run test:api      # 53 skenario API end-to-end — BUTUH PostgreSQL nyata
+npm run verify:all    # keduanya
 ```
 
-Test memakai Prisma double in-memory sehingga bisa dijalankan tanpa database:
+**Tanpa database** (memakai Prisma double in-memory):
+
 - `_config.test.mjs` — validasi secret produksi (menolak boot dengan secret default)
+- `_healthcheck.test.mjs` — heartbeat worker & healthcheck container
 - `_e2e.mjs` — auth, device, API key + scope, single chat, broadcast, kuota, isolasi data
 - `_worker-quota.test.mjs` — worker broadcast berhenti saat kuota habis
 - `_admin.test.mjs` — otorisasi admin, perubahan paket, batas device, privasi data
+
+**Dengan database** (`npm run test:api`): menjalankan server sungguhan di port sementara
+dan memanggil setiap endpoint publik seperti yang dilakukan integrasi eksternal —
+termasuk jalur sukses kirim pesan, render variabel template broadcast, filter device,
+scope read-only, kuota habis, JSON rusak, dan kesesuaian dengan dokumentasi OpenAPI.
+WhatsApp distub hanya di batas socket, jadi tidak perlu device asli.
+
+> Jalankan `npm run test:api` setiap kali mengubah rute atau middleware auth:
+> inilah yang menangkap konflik antar-router yang tidak terlihat oleh test in-memory.
 
 ---
 
@@ -458,6 +472,20 @@ curl -X POST http://localhost:4000/api/send-message \
 | Rate limiting | Global per IP/API key + limiter ketat pada login/register |
 | Upload | Batas ukuran (`MAX_UPLOAD_MB`), file temp dihapus setelah dikirim |
 | HTTP | Helmet, CORS dibatasi `FRONTEND_URL`, body limit 2 MB |
+
+### Dua klien, satu URL
+
+`GET /api/messages` dan `GET /api/broadcast/:id` dipakai oleh **dua klien berbeda**:
+dashboard (JWT) dan API publik (API key). Express mencocokkan rute berdasarkan urutan
+pendaftaran, jadi rute yang didaftarkan pertama akan selalu menang dan memutus klien
+lainnya — gejalanya `"Token tidak ditemukan"` pada request API key.
+
+Solusinya di `src/app.js`: rute publik didaftarkan **lebih dulu**, dilindungi middleware
+`onlyIfApiKey` yang meneruskan request ke router JWT bila tidak ada API key
+(`next("route")`). Dengan begitu satu URL terdokumentasi melayani kedua audiens.
+
+> Bila menambah rute baru yang path-nya sama antara dashboard dan API publik, gunakan
+> pola `shared()` yang sama. `npm run test:api` akan menangkap konflik semacam ini.
 
 ---
 

@@ -141,12 +141,42 @@ export const authLimiter = rateLimit({
 
 /* ------------------------------ error handler ----------------------------- */
 
-export function notFoundHandler(_req, res) {
+export function notFoundHandler(req, res) {
+  // A 404 on an API path is usually a typo or a missing /api prefix. Point the
+  // caller at the docs rather than leaving them to guess.
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      error: `Endpoint ${req.method} ${req.path} tidak ditemukan. Lihat dokumentasi di /docs.`,
+    });
+  }
   res.status(404).json({ error: "Endpoint tidak ditemukan" });
 }
 
 export function errorHandler(err, req, res, _next) {
   let status = err.status || err.statusCode || 500;
+
+  /**
+   * Malformed JSON body.
+   *
+   * Express's body parser throws a SyntaxError with the raw parser message
+   * ("Expected property name or '}' in JSON at position 1"). That is noise for
+   * an API consumer: it names no field, no endpoint, and leaks parser internals.
+   * Replace it with something actionable.
+   */
+  if (err.type === "entity.parse.failed" || (err instanceof SyntaxError && "body" in err)) {
+    return res.status(400).json({
+      error:
+        "Body request bukan JSON yang valid. Kirim Content-Type: application/json " +
+        "dengan body JSON yang benar.",
+    });
+  }
+
+  // Payload larger than the configured limit
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({
+      error: `Body request terlalu besar. Maksimal ${env.maxUploadMb} MB.`,
+    });
+  }
 
   // Database connectivity problems are operational, not client errors
   if (
