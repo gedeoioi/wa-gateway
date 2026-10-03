@@ -156,7 +156,7 @@ export default async function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-x-0 -top-32 h-72 bg-gradient-to-b from-brand-100/70 to-transparent" />
         <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:gap-12 sm:py-20 lg:grid-cols-2 lg:items-center lg:py-28">
-          <div className="min-w-0 animate-enter-up">
+          <div className="mx-auto min-w-0 animate-enter-up">
             <span className="badge bg-brand-50 text-brand-700">Ringan · Mudah · Cepat</span>
             <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               WhatsApp Gateway untuk <span className="text-brand-600">chat &amp; broadcast</span> otomatis
