@@ -155,8 +155,8 @@ export default async function LandingPage() {
 
       <section className="relative overflow-hidden">
         <div className="absolute inset-x-0 -top-32 h-72 bg-gradient-to-b from-brand-100/70 to-transparent" />
-        <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-14 sm:py-20 lg:grid-cols-2 lg:items-center lg:py-28">
-          <div className="animate-enter-up">
+        <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:gap-12 sm:py-20 lg:grid-cols-2 lg:items-center lg:py-28">
+          <div className="min-w-0 animate-enter-up">
             <span className="badge bg-brand-50 text-brand-700">Ringan · Mudah · Cepat</span>
             <h1 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               WhatsApp Gateway untuk <span className="text-brand-600">chat &amp; broadcast</span> otomatis
@@ -166,16 +166,16 @@ export default async function LandingPage() {
               integrasikan lewat REST API. Semua dalam satu dashboard sederhana.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link href="/register" className="btn-primary px-6 py-3">Mulai gratis sekarang</Link>
-              <Link href="/login" className="btn-secondary px-6 py-3">Saya sudah punya akun</Link>
+              <Link href="/register" className="btn-primary w-full px-6 py-3 sm:w-auto">Mulai gratis sekarang</Link>
+              <Link href="/login" className="btn-secondary w-full px-6 py-3 sm:w-auto">Saya sudah punya akun</Link>
             </div>
-            <dl className="mt-10 grid max-w-md grid-cols-3 gap-4 sm:gap-6">
+            <dl className="mt-10 grid max-w-md grid-cols-2 gap-x-4 gap-y-5 xs:grid-cols-3 sm:gap-6">
               {[
                 { k: "99.9%", v: "Uptime gateway" },
                 { k: "<50MB", v: "Pemakaian memori" },
                 { k: "5.000", v: "Nomor per broadcast" },
               ].map((item) => (
-                <div key={item.k}>
+                <div key={item.k} className="min-w-0">
                   <dt className="text-xl font-semibold text-slate-900 sm:text-2xl">{item.k}</dt>
                   <dd className="text-xs text-slate-500 sm:text-sm">{item.v}</dd>
                 </div>
@@ -183,15 +183,15 @@ export default async function LandingPage() {
             </dl>
           </div>
 
-          <div className="stagger-item" style={{ "--stagger-index": 2 } as React.CSSProperties}>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-brand-900/5">
-              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+          <div className="min-w-0 stagger-item" style={{ "--stagger-index": 2 } as React.CSSProperties}>
+            <div className="w-full min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-brand-900/5 sm:p-5">
+              <div className="flex min-w-0 items-center gap-2 border-b border-slate-100 pb-3">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
                 <span className="h-2.5 w-2.5 rounded-full bg-brand-400" />
-                <span className="ml-2 text-xs text-slate-400">POST /api/send-message</span>
+                <span className="ml-1 min-w-0 truncate text-[11px] text-slate-400 xs:ml-2 xs:text-xs">POST /api/send-message</span>
               </div>
-              <pre className="mt-4 overflow-x-auto rounded-lg bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
+              <pre className="mt-3 max-w-full overflow-x-auto rounded-lg bg-slate-900 p-3 text-[10px] leading-relaxed text-slate-100 sm:mt-4 sm:p-4 sm:text-xs">
 {`curl -X POST http://localhost:4000/api/send-message \\
   -H "X-API-Key: wag_live_••••••••" \\
   -H "Content-Type: application/json" \\
@@ -210,12 +210,12 @@ export default async function LandingPage() {
   }
 }`}
               </pre>
-              <div className="mt-4 flex items-center gap-3 rounded-lg bg-brand-50 px-4 py-3">
-                <span className="relative flex h-2.5 w-2.5">
+              <div className="mt-3 flex min-w-0 items-center gap-3 rounded-lg bg-brand-50 px-3 py-3 sm:mt-4 sm:px-4">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-brand-500" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-600" />
                 </span>
-                <span className="text-sm font-medium text-brand-800">
+                <span className="min-w-0 break-all text-xs font-medium text-brand-800 sm:text-sm">
                   Device terhubung · @6281234567890
                 </span>
               </div>
